@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Pack Bond — Dog Training</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --wolf: #4a5054;
+  --wolf-dark: #2e3133;
+  --wolf-mid: #5a5f62;
+  --wolf-light: #7e8589;
+  --cream: #f0ebe3;
+  --cream-dark: #e8e2d9;
+  --ivory: #faf7f2;
+  --sable: #8b7355;
+  --ash: #b0b8bc;
+  --white: #ffffff;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  background: var(--ivory);
+  color: var(--wolf-dark);
+  overflow-x: hidden;
+}
+
+/* ─── PAGES ─── */
+.page { display: none; min-height: 100vh; }
+.page.active { display: block; }
+
+/* ─── NAV ─── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  background: rgba(250,247,242,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(74,80,84,0.1);
+  transition: background 0.3s;
+}
+
+nav.dark {
+  background: rgba(46,49,51,0.97);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.nav-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: var(--wolf-dark);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+nav.dark .nav-logo { color: var(--cream); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--wolf-light);
+  text-decoration: none;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+nav.dark .nav-links a { color: rgba(240,235,227,0.55); }
+
+.nav-links a:hover,
+.nav-links a.active { color: var(--wolf-dark); }
+
+nav.dark .nav-links a:hover,
+nav.dark .nav-links a.active { color: var(--cream); }
+
+.nav-cta {
+  background: var(--wolf-dark);
+  color: var(--cream) !important;
+  padding: 10px 22px;
+  font-size: 11px !important;
+  letter-spacing: 2px;
+  transition: background 0.2s !important;
+}
+
+.nav-cta:hover { background: var(--wolf) !important; color: var(--cream) !important; }
+
+nav.dark .nav-cta {
+  background: var(--cream);
+  color: var(--wolf-dark) !important;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.hamburger span {
+  width: 24px;
+  height: 1.5px;
+  background: var(--wolf-dark);
+  transition: all 0.3s;
+}
+
+nav.dark .hamburger span { background: var(--cream); }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  background: var(--wolf-dark);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 140px 64px 80px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-eyebrow {
+  font-size: 10px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-bottom: 28px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 0.3s;
+}
+
+.hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(80px, 9vw, 140px);
+  line-height: 0.88;
+  color: var(--cream);
+  letter-spacing: 2px;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 0.5s;
+}
+
+.hero-title em {
+  display: block;
+  color: var(--ash);
+  font-style: normal;
+}
+
+.hero-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(17px, 2vw, 22px);
+  font-style: italic;
+  color: rgba(240,235,227,0.6);
+  line-height: 1.6;
+  margin-bottom: 52px;
+  max-width: 400px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 0.7s;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 0.9s;
+}
+
+.btn-primary {
+  background: var(--cream);
+  color: var(--wolf-dark);
+  padding: 16px 36px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--ivory);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--cream);
+  padding: 16px 36px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid rgba(240,235,227,0.3);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.btn-outline:hover {
+  border-color: rgba(240,235,227,0.7);
+  transform: translateY(-1px);
+}
+
+.hero-right {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #3a3f42 0%, #2e3133 60%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.hero-image-placeholder .placeholder-icon {
+  font-size: 80px;
+  opacity: 0.15;
+}
+
+.hero-image-placeholder p {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.25);
+}
+
+.hero-stats {
+  position: absolute;
+  bottom: 48px;
+  left: 64px;
+  display: flex;
+  gap: 48px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 1.1s;
+}
+
+.hero-stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 44px;
+  color: var(--cream);
+  line-height: 1;
+}
+
+.hero-stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-top: 4px;
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 32px;
+  right: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 1.3s;
+}
+
+.hero-scroll span {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.3);
+}
+
+.scroll-bar {
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(to bottom, rgba(240,235,227,0.4), transparent);
+  animation: scrollAnim 2s ease-in-out infinite;
+}
+
+@keyframes scrollAnim {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ─── PHILOSOPHY STRIP ─── */
+.philosophy-strip {
+  background: var(--wolf);
+  padding: 56px 48px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+}
+
+.philosophy-item {
+  padding: 0 48px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+}
+
+.philosophy-item:last-child { border-right: none; }
+
+.philosophy-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  color: rgba(240,235,227,0.15);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.philosophy-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--cream);
+  margin-bottom: 10px;
+}
+
+.philosophy-desc {
+  font-size: 13px;
+  color: rgba(240,235,227,0.5);
+  line-height: 1.7;
+}
+
+/* ─── SECTION COMMON ─── */
+.section {
+  padding: 120px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--wolf-light);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(40px, 5vw, 68px);
+  font-weight: 300;
+  color: var(--wolf-dark);
+  line-height: 1.05;
+  margin-bottom: 56px;
+}
+
+.full-divider {
+  height: 1px;
+  background: linear-gradient(to right, rgba(74,80,84,0.2), transparent);
+  margin: 0 48px;
+}
+
+/* ─── HOMEPAGE SERVICES PREVIEW ─── */
+.services-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.service-preview-card {
+  background: var(--cream-dark);
+  padding: 40px 32px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.service-preview-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--wolf);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.service-preview-card:hover { background: var(--cream); }
+.service-preview-card:hover::after { transform: scaleX(1); }
+
+.sp-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  color: rgba(74,80,84,0.07);
+  position: absolute;
+  top: 0; right: 12px;
+  line-height: 1;
+}
+
+.sp-icon { font-size: 28px; margin-bottom: 20px; }
+
+.sp-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  color: var(--wolf-dark);
+  margin-bottom: 12px;
+}
+
+.sp-desc {
+  font-size: 13px;
+  color: var(--wolf-mid);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.sp-link {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--wolf);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* ─── TESTIMONIALS ─── */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.testimonial-card {
+  background: var(--cream-dark);
+  padding: 40px 32px;
+}
+
+.testimonial-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
+  font-style: italic;
+  color: var(--wolf-dark);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.testimonial-quote::before {
+  content: '"';
+  font-size: 60px;
+  color: rgba(74,80,84,0.12);
+  font-family: 'Cormorant Garamond', serif;
+  line-height: 0.5;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.testimonial-name {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--wolf);
+  margin-bottom: 4px;
+}
+
+.testimonial-dog {
+  font-size: 12px;
+  color: var(--ash);
+  font-style: italic;
+}
+
+/* ─── ABOUT PAGE ─── */
+.about-hero {
+  min-height: 60vh;
+  background: var(--wolf-dark);
+  display: flex;
+  align-items: flex-end;
+  padding: 140px 64px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(90,95,98,0.3), transparent 60%);
+}
+
+.about-hero-content { position: relative; z-index: 2; }
+
+.about-hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(72px, 10vw, 130px);
+  color: var(--cream);
+  line-height: 0.9;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+.about-hero p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(18px, 2.5vw, 26px);
+  font-style: italic;
+  color: rgba(240,235,227,0.6);
+  max-width: 560px;
+}
+
+.about-body {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 80px;
+  padding: 140px 64px 100px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.about-sidebar {
+  position: sticky;
+  top: 100px;
+  align-self: start;
+}
+
+.about-stat {
+  border-left: 2px solid var(--wolf);
+  padding: 0 0 0 20px;
+  margin-bottom: 36px;
+}
+
+.about-stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: var(--wolf-dark);
+  line-height: 1;
+}
+
+.about-stat-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--wolf-light);
+  margin-top: 4px;
+}
+
+.about-image-placeholder {
+  width: 100%;
+  aspect-ratio: 4/5;
+  background: var(--cream-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.about-image-placeholder .pi {
+  font-size: 64px;
+  opacity: 0.2;
+}
+
+.about-image-placeholder p {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.about-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1.9;
+  color: var(--wolf-dark);
+}
+
+.about-text p { margin-bottom: 28px; }
+.about-text em { color: var(--wolf); font-style: italic; }
+.about-text strong { font-weight: 600; color: var(--wolf-dark); }
+
+.methodology-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  margin-top: 60px;
+}
+
+.method-card {
+  background: var(--cream-dark);
+  padding: 36px 32px;
+}
+
+.method-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  color: var(--wolf-dark);
+  margin-bottom: 12px;
+}
+
+.method-desc {
+  font-size: 14px;
+  color: var(--wolf-mid);
+  line-height: 1.7;
+}
+
+/* ─── SERVICES PAGE ─── */
+.services-hero {
+  min-height: 45vh;
+  background: var(--wolf);
+  display: flex;
+  align-items: flex-end;
+  padding: 140px 64px 70px;
+}
+
+.services-hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(64px, 9vw, 120px);
+  color: var(--cream);
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+
+.services-hero p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-style: italic;
+  color: rgba(240,235,227,0.65);
+  margin-top: 20px;
+  max-width: 500px;
+}
+
+.services-full-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.service-full-card {
+  background: var(--cream-dark);
+  padding: 48px 44px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s;
+}
+
+.service-full-card:hover { background: var(--cream); }
+
+.sfc-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 96px;
+  color: rgba(74,80,84,0.06);
+  position: absolute;
+  top: 0; right: 16px;
+  line-height: 1;
+}
+
+.sfc-icon { font-size: 32px; margin-bottom: 24px; }
+
+.sfc-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  color: var(--wolf-dark);
+  margin-bottom: 16px;
+}
+
+.sfc-desc {
+  font-size: 14px;
+  color: var(--wolf-mid);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.sfc-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid rgba(74,80,84,0.1);
+}
+
+.sfc-price {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--wolf-dark);
+  letter-spacing: 1px;
+}
+
+.sfc-format {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--wolf-light);
+  text-align: right;
+}
+
+/* ─── PRICING SECTION ─── */
+.pricing-section {
+  background: var(--wolf-dark);
+  padding: 100px 48px;
+}
+
+.pricing-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pricing-section .section-label { color: rgba(240,235,227,0.4); }
+.pricing-section .section-title { color: var(--cream); }
+
+.pricing-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.pricing-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 48px 36px;
+  text-align: center;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.pricing-card:hover { background: rgba(255,255,255,0.07); }
+
+.pricing-card.featured {
+  background: var(--cream);
+  border-color: var(--cream);
+}
+
+.pricing-card.featured:hover { background: var(--ivory); }
+
+.pricing-card.featured::before {
+  content: 'MOST POPULAR';
+  position: absolute;
+  top: -1px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--wolf);
+  color: var(--cream);
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 4px 16px;
+}
+
+.pc-tier {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.4);
+  margin-bottom: 16px;
+}
+
+.pricing-card.featured .pc-tier { color: var(--wolf-light); }
+
+.pc-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+
+.pricing-card.featured .pc-name { color: var(--wolf-dark); }
+
+.pc-amount {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  color: var(--cream);
+  line-height: 1;
+}
+
+.pricing-card.featured .pc-amount { color: var(--wolf-dark); }
+
+.pc-amount sup { font-size: 32px; vertical-align: super; }
+
+.pc-period {
+  font-size: 12px;
+  color: rgba(240,235,227,0.35);
+  margin-bottom: 36px;
+}
+
+.pricing-card.featured .pc-period { color: var(--wolf-light); }
+
+.pc-features {
+  list-style: none;
+  text-align: left;
+  margin-bottom: 36px;
+}
+
+.pc-features li {
+  font-size: 14px;
+  color: rgba(240,235,227,0.65);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  gap: 10px;
+}
+
+.pricing-card.featured .pc-features li {
+  color: var(--wolf-mid);
+  border-bottom-color: rgba(74,80,84,0.1);
+}
+
+.pc-features li::before { content: '—'; color: var(--wolf-light); }
+.pricing-card.featured .pc-features li::before { color: var(--wolf); }
+
+.pc-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  border: 1px solid rgba(240,235,227,0.3);
+  background: transparent;
+  color: var(--cream);
+  transition: all 0.2s;
+}
+
+.pc-btn:hover { background: var(--cream); color: var(--wolf-dark); }
+
+.pricing-card.featured .pc-btn {
+  background: var(--wolf-dark);
+  color: var(--cream);
+  border-color: var(--wolf-dark);
+}
+
+.pricing-card.featured .pc-btn:hover { background: var(--wolf); }
+
+/* ─── GALLERY PAGE ─── */
+.gallery-hero {
+  min-height: 40vh;
+  background: var(--wolf-dark);
+  display: flex;
+  align-items: flex-end;
+  padding: 140px 64px 70px;
+}
+
+.gallery-hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(64px, 9vw, 120px);
+  color: var(--cream);
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 300px;
+  gap: 4px;
+  padding: 4px;
+}
+
+.gallery-item {
+  background: var(--cream-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.gallery-item:hover { transform: scale(0.99); }
+
+.gallery-item.tall { grid-row: span 2; }
+.gallery-item.wide { grid-column: span 2; }
+
+.gallery-item .gi-icon { font-size: 48px; opacity: 0.15; }
+.gallery-item .gi-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.gallery-item .gi-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--wolf-dark);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s;
+}
+
+.gallery-item:hover .gi-overlay { opacity: 0.6; }
+
+.gallery-caption {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 24px 36px;
+  background: var(--cream-dark);
+  color: var(--wolf-light);
+  display: flex;
+  gap: 48px;
+  flex-wrap: wrap;
+}
+
+/* ─── CONTACT PAGE ─── */
+.contact-hero {
+  min-height: 45vh;
+  background: var(--wolf-dark);
+  display: flex;
+  align-items: flex-end;
+  padding: 140px 64px 70px;
+}
+
+.contact-hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(64px, 9vw, 120px);
+  color: var(--cream);
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+
+.contact-hero p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: rgba(240,235,227,0.6);
+  margin-top: 20px;
+  max-width: 500px;
+}
+
+.contact-body {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 2px;
+  padding: 4px 4px 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.contact-info {
+  background: var(--wolf);
+  padding: 64px 48px;
+}
+
+.contact-info h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  color: var(--cream);
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+.contact-detail {
+  margin-bottom: 32px;
+  border-left: 2px solid rgba(240,235,227,0.2);
+  padding-left: 20px;
+}
+
+.contact-detail-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.4);
+  margin-bottom: 6px;
+}
+
+.contact-detail-value {
+  font-size: 15px;
+  color: var(--cream);
+  line-height: 1.6;
+}
+
+.contact-policy {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.contact-policy h3 {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.4);
+  margin-bottom: 16px;
+}
+
+.contact-policy p {
+  font-size: 13px;
+  color: rgba(240,235,227,0.5);
+  line-height: 1.7;
+}
+
+.contact-form {
+  background: var(--cream-dark);
+  padding: 64px 56px;
+}
+
+.contact-form h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  color: var(--wolf-dark);
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--wolf-light);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--ivory);
+  border: 1px solid rgba(74,80,84,0.15);
+  padding: 14px 16px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  color: var(--wolf-dark);
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--wolf);
+}
+
+.form-group textarea { min-height: 120px; resize: vertical; }
+
+.form-submit {
+  width: 100%;
+  background: var(--wolf-dark);
+  color: var(--cream);
+  border: none;
+  padding: 18px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+
+.form-submit:hover { background: var(--wolf); }
+
+.form-success {
+  display: none;
+  text-align: center;
+  padding: 60px 40px;
+}
+
+.form-success.show { display: block; }
+
+.form-success h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  color: var(--wolf-dark);
+  margin-bottom: 16px;
+}
+
+.form-success p {
+  font-size: 15px;
+  color: var(--wolf-mid);
+  line-height: 1.7;
+}
+
+/* ─── FOOTER ─── */
+footer {
+  background: var(--wolf-dark);
+  padding: 80px 64px 40px;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 60px;
+  padding-bottom: 60px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 40px;
+}
+
+.footer-brand-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: 4px;
+  color: var(--cream);
+  margin-bottom: 16px;
+}
+
+.footer-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-style: italic;
+  color: rgba(240,235,227,0.4);
+  line-height: 1.6;
+}
+
+.footer-col h4 {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.3);
+  margin-bottom: 20px;
+}
+
+.footer-col ul { list-style: none; }
+
+.footer-col ul li {
+  margin-bottom: 12px;
+}
+
+.footer-col ul li a {
+  font-size: 13px;
+  color: rgba(240,235,227,0.5);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.footer-col ul li a:hover { color: var(--cream); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-bottom p {
+  font-size: 12px;
+  color: rgba(240,235,227,0.25);
+  letter-spacing: 1px;
+}
+
+.footer-social {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-social a {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(240,235,227,0.3);
+  text-decoration: none;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.footer-social a:hover { color: var(--cream); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ─── MOBILE ─── */
+@media (max-width: 900px) {
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+
+  .hero { grid-template-columns: 1fr; }
+  .hero-right { display: none; }
+  .hero-left { padding: 120px 28px 100px; }
+  .hero-stats { left: 28px; gap: 28px; bottom: 32px; }
+
+  .philosophy-strip { grid-template-columns: 1fr; gap: 32px; }
+  .philosophy-item { border-right: none; padding: 0; }
+
+  .section { padding: 80px 28px; }
+
+  .services-preview { grid-template-columns: 1fr; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .services-full-grid { grid-template-columns: 1fr; }
+  .pricing-cards { grid-template-columns: 1fr; }
+  .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+  .gallery-item.wide { grid-column: span 1; }
+
+  .about-body { grid-template-columns: 1fr; padding: 60px 28px; }
+  .about-sidebar { position: static; display: flex; flex-wrap: wrap; gap: 24px; }
+  .about-hero { padding: 120px 28px 60px; }
+  .methodology-grid { grid-template-columns: 1fr; }
+
+  .services-hero, .gallery-hero, .contact-hero { padding: 120px 28px 60px; }
+  .contact-body { grid-template-columns: 1fr; padding: 4px 4px 60px; }
+  .contact-form { padding: 40px 28px; }
+  .contact-info { padding: 40px 28px; }
+  .form-row { grid-template-columns: 1fr; }
+
+  .footer-top { grid-template-columns: 1fr 1fr; gap: 40px; }
+  footer { padding: 60px 28px 32px; }
+}
+
+/* ─── MOBILE NAV MENU ─── */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--wolf-dark);
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.mobile-nav.open { display: flex; }
+
+.mobile-nav a {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 3px;
+  color: rgba(240,235,227,0.6);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.mobile-nav a:hover { color: var(--cream); }
+
+.mobile-nav-close {
+  position: absolute;
+  top: 24px; right: 28px;
+  font-size: 28px;
+  color: rgba(240,235,227,0.4);
+  cursor: pointer;
+  background: none;
+  border: none;
+  line-height: 1;
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  <a onclick="navigate('home'); closeMobileNav()">Home</a>
+  <a onclick="navigate('about'); closeMobileNav()">About</a>
+  <a onclick="navigate('services'); closeMobileNav()">Services</a>
+  <a onclick="navigate('gallery'); closeMobileNav()">Gallery</a>
+  <a onclick="navigate('contact'); closeMobileNav()">Contact</a>
+</div>
+
+<!-- NAV -->
+<nav id="mainNav" class="dark">
+  <div class="nav-logo" onclick="navigate('home')">THE PACK BOND</div>
+  <ul class="nav-links">
+    <li><a onclick="navigate('home')" data-page="home">Home</a></li>
+    <li><a onclick="navigate('about')" data-page="about">About</a></li>
+    <li><a onclick="navigate('services')" data-page="services">Services</a></li>
+    <li><a onclick="navigate('gallery')" data-page="gallery">Gallery</a></li>
+    <li><a onclick="navigate('contact')" data-page="contact" class="nav-cta">Book a Session</a></li>
+  </ul>
+  <div class="hamburger" onclick="openMobileNav()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════ -->
+<!-- HOME PAGE -->
+<!-- ════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Dog Training · Psychology First · Pack Built</div>
+      <div class="hero-title">THE<br>PACK<em>BOND</em></div>
+      <div class="hero-tagline">Train together. Bond forever.<br>Build your pack.</div>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="navigate('contact')">Book a Session</button>
+        <button class="btn-outline" onclick="navigate('services')">View Services</button>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num">12+</div>
+          <div class="hero-stat-label">Years Exp.</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">8</div>
+          <div class="hero-stat-label">Dogs Off-Leash</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">#1</div>
+          <div class="hero-stat-label">Dubai Daycare</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-image-placeholder">
+        <div class="placeholder-icon">🐺</div>
+        <p>Your hero photo goes here</p>
+      </div>
+    </div>
+    <div class="hero-scroll">
+      <span>Scroll</span>
+      <div class="scroll-bar"></div>
+    </div>
+  </div>
+
+  <!-- PHILOSOPHY STRIP -->
+  <div class="philosophy-strip">
+    <div class="philosophy-item">
+      <div class="philosophy-num">01</div>
+      <div class="philosophy-title">Bond First</div>
+      <div class="philosophy-desc">Training begins with connection — between you, your dog, and the world around you.</div>
+    </div>
+    <div class="philosophy-item">
+      <div class="philosophy-num">02</div>
+      <div class="philosophy-title">Psychology Led</div>
+      <div class="philosophy-desc">We understand why dogs behave the way they do, not just how to change it.</div>
+    </div>
+    <div class="philosophy-item">
+      <div class="philosophy-num">03</div>
+      <div class="philosophy-title">Pack Built</div>
+      <div class="philosophy-desc">You and your dog become a pack. Our community becomes yours. That's The Pack Bond.</div>
+    </div>
+  </div>
+
+  <!-- SERVICES PREVIEW -->
+  <div class="section reveal">
+    <div class="section-label">What We Do</div>
+    <div class="section-title">Training built for<br>real life.</div>
+    <div class="services-preview">
+      <div class="service-preview-card" onclick="navigate('services')">
+        <div class="sp-num">01</div>
+        <div class="sp-icon">🐶</div>
+        <div class="sp-name">Puppy Jumpstart</div>
+        <div class="sp-desc">Foundation habits, bite inhibition, socialisation, and routine — done right from day one.</div>
+        <div class="sp-link">Learn more →</div>
+      </div>
+      <div class="service-preview-card" onclick="navigate('services')">
+        <div class="sp-num">02</div>
+        <div class="sp-icon">⚡</div>
+        <div class="sp-name">Reactivity Programme</div>
+        <div class="sp-desc">Multi-session programme built around psychology, not suppression. Real results, lasting change.</div>
+        <div class="sp-link">Learn more →</div>
+      </div>
+      <div class="service-preview-card" onclick="navigate('services')">
+        <div class="sp-num">03</div>
+        <div class="sp-icon">🏔️</div>
+        <div class="sp-name">Off-Leash Hike</div>
+        <div class="sp-desc">The Pack Bond signature. Up to 6 dogs, 2+ hours, no fences. Pure trust and pack energy.</div>
+        <div class="sp-link">Learn more →</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top: 40px;">
+      <button class="btn-primary" style="background: var(--wolf-dark);" onclick="navigate('services')">View All Services</button>
+    </div>
+  </div>
+
+  <div class="full-divider"></div>
+
+  <!-- TESTIMONIALS -->
+  <div class="section reveal">
+    <div class="section-label">The Pack Says</div>
+    <div class="section-title">Real dogs.<br>Real results.</div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="testimonial-quote">I'd tried two other trainers before this. Nothing came close. In three sessions my dog was a different animal — but more than that, so was I.</div>
+        <div class="testimonial-name">Sarah M.</div>
+        <div class="testimonial-dog">Koda, 2yr Border Collie</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-quote">The off-leash hike changed everything. Watching my reactive dog run free with a pack for the first time — I cried. I actually cried.</div>
+        <div class="testimonial-name">James T.</div>
+        <div class="testimonial-dog">Bruno, 4yr German Shepherd</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-quote">She doesn't just train your dog. She teaches you how to think like one. The methodology is unlike anything I've encountered.</div>
+        <div class="testimonial-name">Priya K.</div>
+        <div class="testimonial-dog">Luna, 8mo Labrador</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="full-divider"></div>
+
+  <!-- CTA BAND -->
+  <div style="background: var(--wolf-dark); padding: 100px 48px; text-align: center;">
+    <div style="font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: rgba(240,235,227,0.35); margin-bottom: 24px;">Ready?</div>
+    <div style="font-family: 'Cormorant Garamond', serif; font-size: clamp(36px, 6vw, 72px); color: var(--cream); line-height: 1.1; margin-bottom: 40px; font-style: italic;">"Join the pack."</div>
+    <button class="btn-primary" onclick="navigate('contact')">Book Your First Session</button>
+  </div>
+
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-name">THE PACK BOND</div>
+        <div class="footer-tagline">Train together.<br>Bond forever.<br>Build your pack.</div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a onclick="navigate('home')">Home</a></li>
+          <li><a onclick="navigate('about')">About</a></li>
+          <li><a onclick="navigate('services')">Services</a></li>
+          <li><a onclick="navigate('gallery')">Gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <ul>
+          <li><a onclick="navigate('services')">Puppy Training</a></li>
+          <li><a onclick="navigate('services')">Reactivity</a></li>
+          <li><a onclick="navigate('services')">Leash Walking</a></li>
+          <li><a onclick="navigate('services')">Off-Leash Hikes</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <ul>
+          <li><a>@thepackbond</a></li>
+          <li><a onclick="navigate('contact')">Book a Session</a></li>
+          <li><a>Google Reviews</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 The Pack Bond. All rights reserved.</p>
+      <div class="footer-social">
+        <a>Instagram</a>
+        <a>TikTok</a>
+        <a>Facebook</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- ABOUT PAGE -->
+<!-- ════════════════════════════════════════ -->
+<div class="page" id="page-about">
+
+  <!-- ABOUT HERO (restored) -->
+  <div class="about-hero">
+    <div class="about-hero-content">
+      <h1>THE<br>TRAINER.</h1>
+      <p>A decade of dogs. A lifetime of learning. One methodology that actually works.</p>
+    </div>
+  </div>
+
+  <div class="about-body">
+    <div class="about-sidebar">
+      <div class="about-image-placeholder">
+        <div class="pi">🐺</div>
+        <p>Your photo here</p>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">12+</div>
+        <div class="about-stat-label">Years Experience</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">13</div>
+        <div class="about-stat-label">Year Old Malamute</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">8</div>
+        <div class="about-stat-label">Dogs Off-Leash</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">#1</div>
+        <div class="about-stat-label">Daycare in Dubai</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="about-text">
+        <p>I've spent over a decade doing what most trainers only talk about — getting into the mind of the dog. Not the obedient version owners want, but the actual animal: curious, instinct-driven, relationship-seeking, and capable of far more than most people believe.</p>
+        <p>My journey deepened inside <em>the world's largest doggy daycare in Dubai</em>, where managing hundreds of dogs daily meant reading behaviour at speed, solving problems under pressure, and learning what actually works — not what looks good in a training video.</p>
+        <p>For the past 7+ years, I've taken groups of up to <em>8 dogs on 2+ hour off-leash hikes</em>. No fences. No shortcuts. Just trust, communication, and a methodology built on understanding how dogs think, not just how to make them comply.</p>
+        <p>My 13-year-old Giant Alaskan Malamute has been my greatest teacher — and the living proof that <em>a lifetime of connection, not correction</em>, creates a dog you'll never stop being proud of.</p>
+        <p>I work with puppies, reactive dogs, frustrated walkers, and everything in between. Whether you want the technical deep-dive or the plain-English version — <strong>I speak both.</strong></p>
+      </div>
+
+      <div class="methodology-grid">
+        <div class="method-card">
+          <div class="method-title">Psychology First</div>
+          <div class="method-desc">Every behaviour has a reason. We find it, understand it, and work with it — not against it. No suppression, no shortcuts.</div>
+        </div>
+        <div class="method-card">
+          <div class="method-title">Owner Education</div>
+          <div class="method-desc">You are the constant in your dog's life. My job is to give you the knowledge to lead them confidently, every day.</div>
+        </div>
+        <div class="method-card">
+          <div class="method-title">Real World Training</div>
+          <div class="method-desc">Training that works in your home, on your street, at the park, and everywhere life takes you and your dog.</div>
+        </div>
+        <div class="method-card">
+          <div class="method-title">Pack Community</div>
+          <div class="method-desc">You don't just hire a trainer — you join a pack. A community of owners who share the same commitment to their dogs.</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 60px; text-align: center;">
+        <button class="btn-primary" style="background: var(--wolf-dark);" onclick="navigate('contact')">Work With Me</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-name">THE PACK BOND</div>
+        <div class="footer-tagline">Train together.<br>Bond forever.<br>Build your pack.</div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a onclick="navigate('home')">Home</a></li>
+          <li><a onclick="navigate('about')">About</a></li>
+          <li><a onclick="navigate('services')">Services</a></li>
+          <li><a onclick="navigate('gallery')">Gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <ul>
+          <li><a onclick="navigate('services')">Puppy Training</a></li>
+          <li><a onclick="navigate('services')">Reactivity</a></li>
+          <li><a onclick="navigate('services')">Leash Walking</a></li>
+          <li><a onclick="navigate('services')">Off-Leash Hikes</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <ul>
+          <li><a>@thepackbond</a></li>
+          <li><a onclick="navigate('contact')">Book a Session</a></li>
+          <li><a>Google Reviews</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 The Pack Bond. All rights reserved.</p>
+      <div class="footer-social">
+        <a>Instagram</a><a>TikTok</a><a>Facebook</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- SERVICES PAGE -->
+<!-- ════════════════════════════════════════ -->
+<div class="page" id="page-services">
+  <div class="services-hero">
+    <div>
+      <div style="font-size:10px; letter-spacing:5px; text-transform:uppercase; color:rgba(240,235,227,0.35); margin-bottom:20px;">What We Offer</div>
+      <h1>TRAIN.<br>BOND.<br>GROW.</h1>
+      <p>Every session is built around your dog's psychology and your life together.</p>
+    </div>
+  </div>
+
+  <div style="max-width:1200px; margin:0 auto; padding: 4px 4px 0;">
+    <div class="services-full-grid">
+      <div class="service-full-card">
+        <div class="sfc-num">01</div>
+        <div class="sfc-icon">🐶</div>
+        <div class="sfc-name">Puppy Jumpstart</div>
+        <div class="sfc-desc">Foundation habits, bite inhibition, socialisation, basic cues, and setting up a home routine that actually sticks. The first 16 weeks are everything — let's get them right.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $120</div>
+          <div class="sfc-format">1-on-1<br>60–75 min</div>
+        </div>
+      </div>
+      <div class="service-full-card">
+        <div class="sfc-num">02</div>
+        <div class="sfc-icon">🎯</div>
+        <div class="sfc-name">Obedience & Lifestyle</div>
+        <div class="sfc-desc">Real-world obedience that works at home, at the park, and everywhere in between. Cues, manners, and life skills — taught to both dog and owner so it actually sticks.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $130</div>
+          <div class="sfc-format">1-on-1<br>60–90 min</div>
+        </div>
+      </div>
+      <div class="service-full-card">
+        <div class="sfc-num">03</div>
+        <div class="sfc-icon">⚡</div>
+        <div class="sfc-name">Reactivity Programme</div>
+        <div class="sfc-desc">For dogs that bark, lunge, or shut down around other dogs, people, or stimuli. A multi-session programme built around understanding and psychology — not suppression.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $350</div>
+          <div class="sfc-format">1-on-1<br>3–6 Sessions</div>
+        </div>
+      </div>
+      <div class="service-full-card">
+        <div class="sfc-num">04</div>
+        <div class="sfc-icon">🦮</div>
+        <div class="sfc-name">Leash Walking Intensive</div>
+        <div class="sfc-desc">Pulling, zigzagging, stopping dead — fixed. You'll walk out of this session with a different experience. A deep dive into why they pull and exactly what to do instead.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $125</div>
+          <div class="sfc-format">1-on-1<br>75 min</div>
+        </div>
+      </div>
+      <div class="service-full-card">
+        <div class="sfc-num">05</div>
+        <div class="sfc-icon">🐕‍🦺</div>
+        <div class="sfc-name">Foundation Group Class</div>
+        <div class="sfc-desc">Small group, maximum 5 dogs. Core cues, social exposure, and building focus around distractions. Dogs learn. Owners learn. Community gets built in the process.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $65</div>
+          <div class="sfc-format">Group · Max 5<br>60 min</div>
+        </div>
+      </div>
+      <div class="service-full-card">
+        <div class="sfc-num">06</div>
+        <div class="sfc-icon">🏔️</div>
+        <div class="sfc-name">Off-Leash Hike Experience</div>
+        <div class="sfc-desc">The Pack Bond signature. Real-world training on trails with a small pack. Off-leash recall, social skills, and confidence built the way dogs were always meant to learn — free.</div>
+        <div class="sfc-details">
+          <div class="sfc-price">From $85/dog</div>
+          <div class="sfc-format">Group · Max 6<br>2+ hours</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="pricing-section">
+    <div class="pricing-inner">
+      <div class="section-label">Packages</div>
+      <div class="section-title">Invest in the bond.</div>
+      <div class="pricing-cards">
+        <div class="pricing-card">
+          <div class="pc-tier">Starter</div>
+          <div class="pc-name">Single Session</div>
+          <div class="pc-amount"><sup>$</sup>120</div>
+          <div class="pc-period">per session · 60 min</div>
+          <ul class="pc-features">
+            <li>One focused session</li>
+            <li>Session recap via message</li>
+            <li>Homework plan included</li>
+            <li>Best for: one specific issue</li>
+          </ul>
+          <button class="pc-btn" onclick="navigate('contact')">Book Now</button>
+        </div>
+        <div class="pricing-card featured">
+          <div class="pc-tier">Best Value</div>
+          <div class="pc-name">Core Pack</div>
+          <div class="pc-amount"><sup>$</sup>330</div>
+          <div class="pc-period">3 sessions · saves $30</div>
+          <ul class="pc-features">
+            <li>3 × 60–75 min sessions</li>
+            <li>Between-session check-ins</li>
+            <li>Written training plan</li>
+            <li>Progress tracking</li>
+            <li>Best for: specific goals</li>
+          </ul>
+          <button class="pc-btn" onclick="navigate('contact')">Book Now</button>
+        </div>
+        <div class="pricing-card">
+          <div class="pc-tier">Full Transformation</div>
+          <div class="pc-name">Full Programme</div>
+          <div class="pc-amount"><sup>$</sup>600</div>
+          <div class="pc-period">6 sessions · saves $120</div>
+          <ul class="pc-features">
+            <li>6 × 60–90 min sessions</li>
+            <li>Unlimited text support</li>
+            <li>Full written training plan</li>
+            <li>Video feedback on homework</li>
+            <li>Best for: reactivity & full training</li>
+          </ul>
+          <button class="pc-btn" onclick="navigate('contact')">Book Now</button>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top: 48px; font-size:13px; color:rgba(240,235,227,0.3); letter-spacing:1px;">
+        24hr cancellation policy · Packages valid 90 days · Travel fee may apply
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-name">THE PACK BOND</div>
+        <div class="footer-tagline">Train together.<br>Bond forever.<br>Build your pack.</div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a onclick="navigate('home')">Home</a></li>
+          <li><a onclick="navigate('about')">About</a></li>
+          <li><a onclick="navigate('services')">Services</a></li>
+          <li><a onclick="navigate('gallery')">Gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <ul>
+          <li><a>@thepackbond</a></li>
+          <li><a onclick="navigate('contact')">Book a Session</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 The Pack Bond. All rights reserved.</p>
+      <div class="footer-social">
+        <a>Instagram</a><a>TikTok</a><a>Facebook</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- GALLERY PAGE -->
+<!-- ════════════════════════════════════════ -->
+<div class="page" id="page-gallery">
+  <div class="gallery-hero">
+    <div>
+      <div style="font-size:10px; letter-spacing:5px; text-transform:uppercase; color:rgba(240,235,227,0.35); margin-bottom:20px;">The Pack in Action</div>
+      <h1>THE<br>PACK<br>GALLERY.</h1>
+    </div>
+  </div>
+
+  <div class="gallery-grid">
+    <div class="gallery-item tall">
+      <div class="gi-icon">🏔️</div>
+      <div class="gi-label">Off-Leash Hike</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gi-icon">🐺</div>
+      <div class="gi-label">Your Malamute</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gi-icon">🐶</div>
+      <div class="gi-label">Puppy Session</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item wide">
+      <div class="gi-icon">🐕‍🦺</div>
+      <div class="gi-label">Group Class</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gi-icon">⚡</div>
+      <div class="gi-label">Reactivity Work</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item tall">
+      <div class="gi-icon">🦮</div>
+      <div class="gi-label">Leash Training</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gi-icon">🎯</div>
+      <div class="gi-label">Obedience</div>
+      <div class="gi-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gi-icon">🌿</div>
+      <div class="gi-label">Trail Session</div>
+      <div class="gi-overlay"></div>
+    </div>
+  </div>
+
+  <div class="gallery-caption">
+    <span>Replace placeholders with your own photos</span>
+    <span>Recommended: square + portrait + landscape mix</span>
+    <span>@thepackbond on Instagram for more</span>
+  </div>
+
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-name">THE PACK BOND</div>
+        <div class="footer-tagline">Train together.<br>Bond forever.<br>Build your pack.</div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a onclick="navigate('home')">Home</a></li>
+          <li><a onclick="navigate('about')">About</a></li>
+          <li><a onclick="navigate('services')">Services</a></li>
+          <li><a onclick="navigate('contact')">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 The Pack Bond. All rights reserved.</p>
+      <div class="footer-social">
+        <a>Instagram</a><a>TikTok</a><a>Facebook</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- CONTACT PAGE -->
+<!-- ════════════════════════════════════════ -->
+<div class="page" id="page-contact">
+  <div class="contact-hero">
+    <div>
+      <div style="font-size:10px; letter-spacing:5px; text-transform:uppercase; color:rgba(240,235,227,0.35); margin-bottom:20px;">Let's Begin</div>
+      <h1>JOIN<br>THE<br>PACK.</h1>
+      <p>Tell me about your dog. I'll take it from there.</p>
+    </div>
+  </div>
+
+  <div class="contact-body">
+    <div class="contact-info">
+      <h2>Before we meet</h2>
+      <div class="contact-detail">
+        <div class="contact-detail-label">What to expect</div>
+        <div class="contact-detail-value">I'll review your form and reach out within 24 hours to confirm your session and answer any questions.</div>
+      </div>
+      <div class="contact-detail">
+        <div class="contact-detail-label">Location</div>
+        <div class="contact-detail-value">Sessions available across Dubai. Travel fee may apply beyond certain areas.</div>
+      </div>
+      <div class="contact-detail">
+        <div class="contact-detail-label">Social</div>
+        <div class="contact-detail-value">@thepackbond<br>Instagram · TikTok · Facebook</div>
+      </div>
+      <div class="contact-policy">
+        <h3>Policies</h3>
+        <p>24hr cancellation required. Late cancellations charged at 50%. Packages paid upfront and valid 90 days from purchase.</p>
+      </div>
+    </div>
+
+    <div class="contact-form">
+      <h2>Book a Session</h2>
+      <div id="contactForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" placeholder="First & last name">
+          </div>
+          <div class="form-group">
+            <label>Phone / WhatsApp</label>
+            <input type="tel" placeholder="Best number to reach you">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" placeholder="your@email.com">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Dog's Name & Breed</label>
+            <input type="text" placeholder="e.g. Max, Golden Retriever">
+          </div>
+          <div class="form-group">
+            <label>Dog's Age</label>
+            <input type="text" placeholder="e.g. 2 years">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Service Interested In</label>
+          <select>
+            <option value="">Select a service...</option>
+            <option>Puppy Jumpstart</option>
+            <option>Obedience & Lifestyle</option>
+            <option>Reactivity Programme</option>
+            <option>Leash Walking Intensive</option>
+            <option>Foundation Group Class</option>
+            <option>Off-Leash Hike Experience</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tell Me About Your Dog</label>
+          <textarea placeholder="What's going on? What do you want to achieve? Any bite history or known issues?"></textarea>
+        </div>
+        <button class="form-submit" onclick="submitForm()">Send & Join the Pack →</button>
+      </div>
+
+      <div class="form-success" id="formSuccess">
+        <div style="font-size:48px; margin-bottom:20px;">🐺</div>
+        <h3>Welcome to the pack.</h3>
+        <p>I've received your message and will be in touch within 24 hours. Looking forward to meeting you and your dog.</p>
+        <p style="margin-top:16px; font-style:italic; color: var(--wolf-light);">— The Pack Bond</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-name">THE PACK BOND</div>
+        <div class="footer-tagline">Train together.<br>Bond forever.<br>Build your pack.</div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a onclick="navigate('home')">Home</a></li>
+          <li><a onclick="navigate('about')">About</a></li>
+          <li><a onclick="navigate('services')">Services</a></li>
+          <li><a onclick="navigate('gallery')">Gallery</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 The Pack Bond. All rights reserved.</p>
+      <div class="footer-social">
+        <a>Instagram</a><a>TikTok</a><a>Facebook</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ─── NAVIGATION ───
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const nav = document.getElementById('mainNav');
+  const darkPages = ['home', 'about', 'services', 'gallery', 'contact'];
+  nav.classList.toggle('dark', darkPages.includes(page));
+
+  document.querySelectorAll('.nav-links a').forEach(a => {
+    a.classList.toggle('active', a.dataset.page === page);
+  });
+
+  setTimeout(triggerReveals, 100);
+}
+
+// ─── MOBILE NAV ───
+function openMobileNav() {
+  document.getElementById('mobileNav').classList.add('open');
+}
+function closeMobileNav() {
+  document.getElementById('mobileNav').classList.remove('open');
+}
+
+// ─── SCROLL REVEALS ───
+function triggerReveals() {
+  const reveals = document.querySelectorAll('.page.active .reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add('visible');
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(r => observer.observe(r));
+}
+
+// ─── FORM ───
+function submitForm() {
+  const form = document.getElementById('contactForm');
+  const success = document.getElementById('formSuccess');
+  form.style.opacity = '0';
+  form.style.transition = 'opacity 0.4s';
+  setTimeout(() => {
+    form.style.display = 'none';
+    success.classList.add('show');
+  }, 400);
+}
+
+// ─── INIT ───
+window.addEventListener('scroll', () => {
+  triggerReveals();
+});
+
+document.getElementById('mainNav').classList.add('dark');
+setTimeout(triggerReveals, 300);
+</script>
+
+</body>
+</html>
