@@ -175,6 +175,28 @@ a backend; GitHub Pages serves static files and cannot accept writes.
 
 The file must stay named `index.html`.
 
+## Shared copy and admin sign-in (optional)
+
+`SYNC_URL` near the top of the script. Empty (the default) and nothing changes:
+published file plus per-device localStorage. Set to a Cloudflare Worker address
+and the book becomes shared — everyone on the link reads one copy, and only a
+signed-in admin can write. `worker.js` is that server; `SYNC-SETUP.md` is how to
+stand it up.
+
+**The admin password is never in this repo.** It is a Cloudflare secret, because
+`index.html` is public and anyone can read its source. A password checked in the
+browser is decoration, not security — the Worker does the checking, and refuses
+any write without a valid token. The token is an expiry signed with HMAC using
+the password as the key, so it cannot be forged and lapses on its own.
+
+Guard rails in the Worker: a write with no token, a forged token or an expired
+token is refused; it will not accept an empty book over a full one; the last 15
+versions are kept for `/restore`.
+
+Reads are public by design. A members' password would gate a page whose content
+is served publicly anyway — friction without safety. Restricting reads too means
+real accounts and checking every read.
+
 ## Who can edit
 
 `const ALLOW_EDIT` near the top of the script.
@@ -204,8 +226,9 @@ actually publish a change that others see.
 - No offline caching yet (deliberately parked).
 - `Joy` has a duplicated Verse 2 inherited from the source file — flagged with
   a `{cue:}`, still needs the real words.
-- Edits are kept per-device, not shared. Shared editing across the team needs a
-  backend, and with it a way to stop any link-holder overwriting the book.
+- Reads are public even with sync on; only writing is gated.
+- One admin password, not per-person accounts, so an edit cannot be traced to a
+  person. Fine for one leader; wrong once several people edit.
 
 ## Testing
 

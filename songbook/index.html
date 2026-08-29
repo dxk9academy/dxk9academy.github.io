@@ -228,8 +228,23 @@ body[data-edit="1"] .edit-note{display:block}
 body[data-edit="1"] main{padding-bottom:70vh}
 .pair,.w,.c{touch-action:manipulation}
 body[data-readonly="1"] #editToggle,
+body[data-readonly="1"] #songEdit,
 body[data-readonly="1"] #openEdit,
-body[data-readonly="1"] .drawer footer{display:none}
+body[data-readonly="1"] #setNew,
+body[data-readonly="1"] #setEdit,
+body[data-readonly="1"] .addsongs{display:none}
+.signin{
+  width:100%;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+  color:var(--text);font-size:.78em;font-weight:700;padding:10px;margin-top:10px
+}
+.signin.on{border-color:var(--section);color:var(--section)}
+.syncdot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);
+  margin-right:6px;vertical-align:middle
+}
+.syncdot[data-s="ok"]{background:var(--section)}
+.syncdot[data-s="off"]{background:var(--muted)}
+.syncdot[data-s="bad"]{background:var(--cue)}
 .sheet[data-open="1"]{transform:none}
 .sheet h3.sub{margin-top:12px}
 .sheet h3{margin:0 0 10px;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -333,6 +348,7 @@ body[data-setmode="set"] .addsongs{display:block}
   <input class="find" id="find" placeholder="Search songs" aria-label="Search songs">
   <div class="list" id="list"></div>
   <button class="edit-open" id="openEdit">＋ Add or edit a song</button>
+  <button class="signin" id="signBtn">Sign in as admin</button>
   <footer>Edits live on your phone until you download the file and upload it to GitHub. That upload is what everyone else sees.</footer>
 </nav>
 
@@ -1710,6 +1726,82 @@ It is [E]right to give Him [A]thanks and praise
 let SETS=[];
 
 /* ============================================================
+   SHARED COPY (optional).
+   Paste the Worker address below and the book becomes shared: everyone
+   with the link reads the same thing, and only a signed-in admin can
+   change it. Leave it empty and the app behaves exactly as before —
+   published file plus local edits on this device.
+
+   The admin password is NEVER here. It lives as a secret on the Worker,
+   because this page is public and anyone can read its source.
+   ============================================================ */
+const SYNC_URL = "";                       /* e.g. https://worshipbook.<you>.workers.dev */
+const TOKEN_KEY = "worshipbook.token";
+let isAdmin=false, syncState="off", pushTimer=null;
+
+const syncOn=()=>!!SYNC_URL;
+function token(){ try{ return localStorage.getItem(TOKEN_KEY)||""; }catch(e){ return ""; } }
+function setToken(t){ try{ t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY); }catch(e){} }
+
+async function api(path,opts){
+  const o=Object.assign({headers:{}},opts||{});
+  o.headers["Content-Type"]="application/json";
+  const t=token(); if(t)o.headers["Authorization"]="Bearer "+t;
+  const r=await fetch(SYNC_URL.replace(/\/$/,"")+path,o);
+  const body=await r.json().catch(()=>({}));
+  return {ok:r.ok,status:r.status,body};
+}
+async function pullBook(){
+  if(!syncOn())return false;
+  try{
+    const r=await api("/book",{method:"GET"});
+    if(!r.ok||!r.body||r.body.empty||!Array.isArray(r.body.songs)||!r.body.songs.length){
+      syncState="ok";return false;
+    }
+    SONGS.length=0;r.body.songs.forEach(x=>SONGS.push(x));
+    SETS=Array.isArray(r.body.sets)?r.body.sets:[];
+    syncState="ok";
+    return true;
+  }catch(e){ syncState="bad"; return false; }   /* offline: keep whatever we have */
+}
+function pushBook(){
+  if(!syncOn()||!isAdmin)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(async()=>{
+    try{
+      const r=await api("/book",{method:"POST",body:JSON.stringify({songs:SONGS,sets:SETS})});
+      if(r.ok){syncState="ok";toast("Saved for everyone");}
+      else if(r.status===401){isAdmin=false;setToken("");syncState="bad";applyRole();toast("Signed out — sign in again to save");}
+      else{syncState="bad";toast(r.body.error||"Could not save");}
+    }catch(e){ syncState="bad"; toast("No connection — saved on this device only"); }
+    paintDirty();
+  },700);
+}
+function applyRole(){
+  /* with sync on, only a signed-in admin may change anything */
+  const canEdit = syncOn() ? isAdmin : (ALLOW_EDIT||location.hash.toLowerCase().includes("edit"));
+  document.body.dataset.readonly = canEdit ? "0" : "1";
+  const b=document.getElementById("signBtn");
+  if(b){
+    b.style.display = syncOn() ? "block" : "none";
+    b.textContent = isAdmin ? "Signed in as admin — sign out" : "Sign in as admin";
+    b.classList.toggle("on",isAdmin);
+  }
+}
+async function signIn(){
+  if(isAdmin){ setToken(""); isAdmin=false; applyRole(); paintDirty(); toast("Signed out"); return; }
+  const pw=prompt("Admin password");
+  if(pw===null)return;
+  try{
+    const r=await api("/login",{method:"POST",body:JSON.stringify({password:pw})});
+    if(r.ok&&r.body.token){
+      setToken(r.body.token); isAdmin=true; applyRole(); paintDirty();
+      toast("Signed in — your changes now save for everyone");
+    } else toast(r.body.error||"That password is not right.");
+  }catch(e){ toast("Could not reach the server"); }
+}
+
+/* ============================================================
    KEEPING WORK — this device only.
    Everything typed here is kept in the browser so closing the tab or
    reloading no longer throws it away. It does NOT travel to anyone else:
@@ -1731,6 +1823,7 @@ function saveLocal(){
     localDirty=true;
     paintDirty();
   }catch(e){ /* private browsing, or storage full — carry on unsaved */ }
+  pushBook();                       /* and, if shared and signed in, for everyone */
 }
 function loadLocal(){
   let raw=null;
@@ -1756,9 +1849,18 @@ function clearLocal(){
 function paintDirty(){
   const f=document.querySelector(".drawer footer");
   if(!f)return;
-  f.innerHTML=localDirty
-    ? 'Saved on this device. <b>Other people still see the published book</b> — press Download file and send it on to publish. <button class="linkbtn" id="resetLocal">Discard my changes</button>'
-    : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.';
+  const dot='<span class="syncdot" data-s="'+(syncOn()?syncState:"off")+'"></span>';
+  if(syncOn()){
+    f.innerHTML=dot+(isAdmin
+      ? 'Signed in. Changes save for <b>everyone on this link</b>.'
+      : (syncState==="bad"
+         ? 'Cannot reach the shared book — showing the last copy on this device.'
+         : 'Read only. Sign in as admin to make changes.'));
+  }else{
+    f.innerHTML=localDirty
+      ? 'Saved on this device. <b>Other people still see the published book</b> — press Download file and send it on. <button class="linkbtn" id="resetLocal">Discard my changes</button>'
+      : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.';
+  }
   const r=document.getElementById("resetLocal");
   if(r)r.onclick=clearLocal;
 }
@@ -2081,15 +2183,28 @@ edText.addEventListener("input",()=>{
   clearTimeout(chipTimer);chipTimer=setTimeout(refreshMapChips,400);
 });
 
-const canEdit = ALLOW_EDIT || location.hash.toLowerCase().includes("edit");
-if(!canEdit)document.body.dataset.readonly="1";
+document.getElementById("signBtn").onclick=signIn;
 
-loadLocal();
-state.capo=parseInt(parseSong(SONGS[0]).meta.capo||"0",10)||0;
-showDwell();
-render();
-paintDirty();
-if(bootNote)setTimeout(()=>toast(bootNote),600);
+(async function boot(){
+  if(syncOn()){
+    isAdmin=!!token();
+    const got=await pullBook();
+    if(!got)loadLocal();                 /* offline or empty server: fall back */
+    if(isAdmin){                          /* confirm the token still stands */
+      try{const w=await api("/whoami",{method:"GET"});isAdmin=!!(w.ok&&w.body.admin);}
+      catch(e){}
+      if(!isAdmin)setToken("");
+    }
+  }else{
+    loadLocal();
+  }
+  applyRole();
+  state.capo=parseInt(parseSong(SONGS[0]).meta.capo||"0",10)||0;
+  showDwell();
+  render();
+  paintDirty();
+  if(bootNote)setTimeout(()=>toast(bootNote),600);
+})();
 </script>
 </body>
 </html>
