@@ -39,7 +39,7 @@ Everything lives in `index.html`:
 | `render()` | Draws the current song. Sets `data-s`/`data-l`/`data-p` on each pair so edits can find their source position. |
 | `shortOf(label)` | Maps a section label to its map token (`Verse 1` → `v1`). Must stay in sync with the `{map:}` tokens or roadmap chips won't jump. |
 | `convertText(raw)` | Converts old chords-above-lyrics charts to inline format. Runs automatically on paste. |
-| `buildFile()` | Clones the live DOM, swaps in the current `SONGS` array, returns a complete new `index.html` for download. |
+| `buildFile()` | Clones the live DOM, swaps in the current `SONGS` array, returns a complete new `index.html` for download. Song text is escaped on the way back into the backticks — without that, backslashes are eaten on every publish. |
 | `SONGS[]` | The song library. Array of template strings, one per song. |
 
 ## Song format
@@ -100,8 +100,11 @@ actually publish a change that others see.
 - No offline caching yet. A service worker would make it work when the church
   wifi drops. This is the highest-value next addition.
 - No print stylesheet.
-- The chord picker has no slash-bass row (`D/F#` can't be built by tapping,
-  only by editing text).
+- Roadmap chips highlight by matching the section under the reading line, so a
+  song whose `{map:}` repeats a section (`V1 - C - V2 - C - Br - C`) lights up
+  every Chorus chip at once. Fixing this properly needs a performance-position
+  concept: a step index into the map, distinct from the section it points at.
+  That is the prerequisite for next/previous-section controls and auto-scroll.
 - `Joy` has a duplicated Verse 2 inherited from the source file — flagged with
   a `{cue:}`, still needs the real words.
 
@@ -111,3 +114,7 @@ There is no test suite. Open `index.html` in a browser at phone width and check:
 transpose, capo, the three view modes, roadmap chips jumping to the right
 section, edit mode (scroll must still work), paste conversion, and that
 **Download file** produces a file that opens and contains your changes.
+
+Two things worth re-checking after any change, because both broke silently once:
+typing a space in the song editor (the keyboard shortcuts must not steal it),
+and downloading twice in a row (song text must come back byte-identical).

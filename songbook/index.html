@@ -10,7 +10,6 @@
   --ink:#0E1420;
   --panel:#161E2D;
   --panel-2:#1E2839;
-  --line:#2B3away;
   --line:#2B3648;
   --text:#EDE7DC;
   --muted:#8A96AA;
@@ -102,7 +101,8 @@ main{padding:4px 14px 60vh 14px;max-width:900px;margin:0 auto}
 .sec-label .rep{color:var(--cue);letter-spacing:.06em}
 .line{margin:0 0 3px;white-space:pre-wrap}
 .line.chords-row{color:var(--chord);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.9em;letter-spacing:.02em}
-.pair{display:inline-flex;flex-direction:column;vertical-align:bottom}
+.pair{display:inline-flex;flex-direction:column;vertical-align:top}
+.pair.nolyric{margin-right:.4em}
 .pair .c{
   color:var(--chord);font-weight:700;font-size:.82em;line-height:1.25;
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -211,7 +211,7 @@ body[data-edit="1"] .edit-note{display:block}
   border-top:1px solid var(--chord);border-radius:14px 14px 0 0;
   padding:14px 14px calc(16px + env(safe-area-inset-bottom));
   transform:translateY(105%);transition:transform .2s ease;
-  max-height:62vh;overflow-y:auto;overscroll-behavior:contain;
+  max-height:76vh;overflow-y:auto;overscroll-behavior:contain;
   box-shadow:0 -14px 30px -12px rgba(0,0,0,.8)
 }
 body[data-edit="1"] main{padding-bottom:70vh}
@@ -220,8 +220,10 @@ body[data-readonly="1"] #editToggle,
 body[data-readonly="1"] #openEdit,
 body[data-readonly="1"] .drawer footer{display:none}
 .sheet[data-open="1"]{transform:none}
+.sheet h3.sub{margin-top:12px}
 .sheet h3{margin:0 0 10px;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sheet .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.sheet .row.act{position:sticky;bottom:0;margin-bottom:0;padding:9px 0 2px;background:var(--panel);border-top:1px solid var(--line)}
 .k{
   border:1px solid var(--line);background:var(--panel-2);border-radius:8px;
   padding:9px 12px;font-size:.88em;font-weight:700;color:var(--text);min-width:40px
@@ -302,7 +304,10 @@ body[data-readonly="1"] .drawer footer{display:none}
   <div class="row" id="pkRoot"></div>
   <div class="row" id="pkAcc"></div>
   <div class="row" id="pkQual"></div>
-  <div class="row">
+  <h3 class="sub">Bass note (for slash chords)</h3>
+  <div class="row" id="pkBass"></div>
+  <div class="row" id="pkBassAcc"></div>
+  <div class="row act">
     <button class="btn go" id="pkApply">Apply</button>
     <button class="btn" id="pkRemove">Remove chord</button>
     <button class="btn" id="pkCancel">Cancel</button>
@@ -505,14 +510,15 @@ function render(){
       }
       p.className="line";
       toPairs(ln.text).forEach((pr,pi)=>{
-        const sp=document.createElement("span");sp.className="pair";
+        const sp=document.createElement("span");
+        sp.className=pr.l?"pair":"pair nolyric";
         sp.dataset.s=si;sp.dataset.l=li;sp.dataset.p=pi;
         const c=document.createElement("span");c.className="c";
         c.textContent=pr.c?transposeChord(pr.c,n,baseKey):"";
         const l=document.createElement("span");l.className="l";
         if(document.body.dataset.edit==="1"&&pr.l){
           let off=0;
-          pr.l.split(/(?=\s)|(?<=\s)/).forEach(part=>{
+          (pr.l.match(/\s+|\S+/g)||[]).forEach(part=>{
             const w=document.createElement("span");
             w.className=/\S/.test(part)?"w":"";
             w.textContent=part;w.dataset.off=off;
@@ -560,7 +566,7 @@ function pairsToText(pairs){
 
 /* ---------- chord picker ---------- */
 const sheet=document.getElementById("sheet");
-let pick={s:0,l:0,p:0,root:"C",acc:"",qual:"",insertAt:null};
+let pick={s:0,l:0,p:0,root:"C",acc:"",qual:"",bass:"",bassAcc:"",insertAt:null};
 
 function paintPicker(){
   const mk=(box,vals,key)=>{
@@ -581,11 +587,25 @@ function paintPicker(){
      [{label:"major",val:""},{label:"m",val:"m"},{label:"7",val:"7"},{label:"m7",val:"m7"},
       {label:"maj7",val:"maj7"},{label:"sus2",val:"sus2"},{label:"sus4",val:"sus4"},
       {label:"add9",val:"add9"},{label:"dim",val:"dim"}],"qual");
-  document.getElementById("pkPrev").textContent=pick.root+pick.acc+pick.qual;
+  mk(document.getElementById("pkBass"),
+     [{label:"none",val:""}].concat(["C","D","E","F","G","A","B"].map(v=>({label:v,val:v}))),"bass");
+  mk(document.getElementById("pkBassAcc"),
+     [{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}],"bassAcc");
+  document.getElementById("pkBassAcc").style.opacity=pick.bass?"1":".35";
+  document.getElementById("pkPrev").textContent=pickChord();
+}
+/* the chord the picker currently describes */
+function pickChord(){
+  return pick.root+pick.acc+pick.qual+(pick.bass?"/"+pick.bass+pick.bassAcc:"");
 }
 function openPicker(existing){
-  const m=(existing||"").match(/^([A-G])([#b]?)(.*)$/);
+  const raw=(existing||"").trim();
+  const sl=raw.indexOf("/");
+  const head=sl>-1?raw.slice(0,sl):raw, tail=sl>-1?raw.slice(sl+1):"";
+  const m=head.match(/^([A-G])([#b]?)(.*)$/);
   pick.root=m?m[1]:"C";pick.acc=m?m[2]:"";pick.qual=m?m[3]:"";
+  const bm=tail.match(/^([A-G])([#b]?)/);
+  pick.bass=bm?bm[1]:"";pick.bassAcc=bm?bm[2]:"";
   paintPicker();sheet.dataset.open="1";
 }
 function closePicker(){sheet.dataset.open="0";}
@@ -616,7 +636,7 @@ function writeChord(chord){
 }
 document.getElementById("pkApply").onclick=()=>{
   /* store it in the written key, not the transposed one */
-  const shown=pick.root+pick.acc+pick.qual;
+  const shown=pickChord();
   const back=transposeChord(shown,-(state.steps-state.capo),parseSong(SONGS[state.i]).meta.key||"C");
   writeChord(back);
   toast("Chord updated");
@@ -722,6 +742,10 @@ document.querySelectorAll(".seg button").forEach(b=>{
 });
 /* foot-pedal / keyboard: arrows and page keys move between songs */
 document.addEventListener("keydown",e=>{
+  /* never steal keys while the user is typing, or with the editor open */
+  const t=e.target;
+  if(t&&(t.matches("input,textarea,select")||t.isContentEditable))return;
+  if(document.getElementById("editor").dataset.open==="1")return;
   if(["ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();nextSong(1);}
   if(["ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();nextSong(-1);}
 });
@@ -1421,8 +1445,13 @@ function buildFile(){
   doc.querySelectorAll(".fields input").forEach(i=>i.removeAttribute("value"));
   const e=doc.querySelector("#editor");if(e)e.setAttribute("data-open","0");
   const b=doc.querySelector("body");if(b)b.setAttribute("data-compact","0");
-  const block="const SONGS=[\n\n"+SONGS.map(s=>"`"+s+"`").join(",\n\n")+"\n\n];";
-  return "<!DOCTYPE html>\n"+doc.outerHTML.replace(/const SONGS=\[[\s\S]*?\n\];/,block);
+  /* song text goes back inside backticks, so anything special must be escaped
+     or it is silently eaten on every publish */
+  const esc=s=>s.replace(/\\/g,"\\\\").replace(/`/g,"\\`")
+                .replace(/\$\{/g,"\\${").replace(/<\/script/gi,"<\\/script");
+  const block="const SONGS=[\n\n"+SONGS.map(s=>"`"+esc(s)+"`").join(",\n\n")+"\n\n];";
+  /* function form: a literal replacement would interpret $& and friends */
+  return "<!DOCTYPE html>\n"+doc.outerHTML.replace(/const SONGS=\[[\s\S]*?\n\];/,()=>block);
 }
 document.getElementById("edDownload").onclick=()=>{
   const blob=new Blob([buildFile()],{type:"text/html"});
