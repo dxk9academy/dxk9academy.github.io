@@ -29,6 +29,100 @@ body{
 }
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
+/* ============================================================
+   HOME — what a musician wants in the first two seconds:
+   which service is next, and which songs and keys are in it.
+   ============================================================ */
+.home{
+  position:fixed;inset:0;z-index:45;background:var(--ink);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;
+  padding:calc(22px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))
+}
+body[data-home="1"] .home{display:block}
+body[data-home="1"] .stickytop,
+body[data-home="1"] .playbar,
+body[data-home="1"] main{display:none}
+.home-btn{
+  width:38px;height:38px;flex:0 0 38px;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel);color:var(--text);font-size:19px;line-height:1;display:none;
+  place-items:center
+}
+body:not([data-home="1"]) .home-btn{display:grid}
+.home-in{max-width:640px;margin:0 auto}
+
+.h-eyebrow{
+  font-size:.68em;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--section);font-weight:700;margin:0 0 6px
+}
+.h-title{
+  font-size:2em;line-height:1.05;font-weight:800;letter-spacing:-.02em;margin:0 0 4px
+}
+.h-sub{color:var(--muted);font-size:.88em;margin:0 0 22px}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  overflow:hidden;margin-bottom:14px
+}
+.card-top{padding:16px 16px 13px;border-bottom:1px solid var(--line)}
+.card-lbl{
+  font-size:.64em;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--chord);font-weight:700;margin:0 0 7px
+}
+.card-name{font-size:1.32em;font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}
+.card-meta{color:var(--muted);font-size:.8em;margin:5px 0 0}
+
+/* the set, in order — title and key, the two things worth knowing early */
+.setrow{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  padding:13px 16px;border-bottom:1px solid var(--line);background:none
+}
+.setrow:last-child{border-bottom:0}
+.setrow:active{background:var(--panel-2)}
+.setrow .num{
+  flex:0 0 25px;height:25px;border-radius:50%;display:grid;place-items:center;
+  font-size:.7em;font-weight:800;color:var(--muted);
+  border:1px solid var(--line);font-variant-numeric:tabular-nums
+}
+.setrow .who{min-width:0;flex:1}
+.setrow .nm{display:block;font-weight:700;font-size:1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setrow .rl{display:block;color:var(--muted);font-size:.74em;letter-spacing:.07em;text-transform:uppercase;margin-top:3px}
+.setrow .ky{
+  flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;
+  font-size:.86em;color:var(--chord);border:1px solid var(--line);
+  background:var(--panel-2);border-radius:7px;padding:5px 8px;text-align:center;min-width:44px
+}
+.setrow .ky small{display:block;font-size:.68em;color:var(--muted);font-weight:700;letter-spacing:.04em}
+
+.bigbtn{
+  width:100%;background:var(--chord);color:#101010;border:0;border-radius:12px;
+  font-size:.98em;font-weight:800;padding:15px;margin:2px 0 0
+}
+.bigbtn:active{opacity:.85}
+.card-foot{padding:13px 16px}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tile{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:14px;text-align:left
+}
+.tile:active{background:var(--panel-2)}
+.tile .n{display:block;font-size:1.5em;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.tile .l{display:block;color:var(--muted);font-size:.74em;letter-spacing:.1em;text-transform:uppercase;margin-top:6px}
+.tile.wide{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+.tile.wide .n{font-size:1.05em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.wide>span:first-child{min-width:0}
+.tile.wide .go{margin-left:auto;color:var(--muted);font-size:1.2em}
+
+.h-empty{
+  border:1px dashed var(--line);border-radius:12px;padding:20px 16px;
+  color:var(--muted);font-size:.88em;line-height:1.55;margin-bottom:14px
+}
+.h-empty b{color:var(--text)}
+.h-state{
+  display:flex;align-items:center;gap:8px;color:var(--muted);
+  font-size:.76em;padding:14px 2px 0;border-top:1px solid var(--line);margin-top:6px
+}
+
 /* ---------- top bar ---------- */
 .stickytop{
   position:sticky;top:0;z-index:40;background:var(--ink);
@@ -398,6 +492,8 @@ body[data-setmode="set"] .addsongs{display:block}
   <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
 </div>
 
+<div class="home" id="home"></div>
+
 <div class="toast" id="toast"></div>
 
 <div class="sheet" id="sheet">
@@ -420,6 +516,7 @@ body[data-setmode="set"] .addsongs{display:block}
 <header class="bar">
   <div class="bar-row">
     <button class="menu-btn" id="menu" aria-label="Open set list"><span></span></button>
+    <button class="home-btn" id="homeBtn" aria-label="Back to home">◂</button>
     <div class="title-wrap">
       <p class="song-title" id="title">—</p>
       <div class="song-meta" id="meta"></div>
@@ -935,7 +1032,7 @@ function buildList(){
         const at=arr.indexOf(t);
         if(addMode){ at<0?arr.push(t):arr.splice(at,1); }
         else if(at>=0){ arr.splice(at,1); }
-        saveLocal();buildList();return;
+        saveLocal();buildList();renderHome();return;
       }
       openSong(i);
     };
@@ -949,7 +1046,7 @@ document.getElementById("setNew").onclick=()=>{
   const name=(prompt("Name this service — a date works well, e.g. Sunday 7 Sept")||"").trim();
   if(!name)return;
   SETS.push({name,songs:[]});
-  activeSet=SETS.length-1;addMode=true;saveLocal();buildList();
+  activeSet=SETS.length-1;addMode=true;saveLocal();buildList();renderHome();
   toast("Service created — now pick its songs");
 };
 document.getElementById("setEdit").onclick=()=>{
@@ -969,7 +1066,106 @@ document.getElementById("setAdd").onclick=()=>{
   if(activeSet<0)return;
   addMode=!addMode;buildList();
 };
+/* ============================================================
+   HOME. Opening the book used to drop you into whichever song was
+   first, with no idea what was coming. This answers the two
+   questions a musician actually has: what are we playing, and in
+   what key — the same pair the big worship apps lead with.
+   ============================================================ */
+const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function showHome(){document.body.dataset.home="1";setPlaying(false);renderHome();window.scrollTo(0,0);}
+function hideHome(){document.body.dataset.home="0";}
+
+/* the service to lead with: the one open, else the newest with songs in it */
+function featuredSet(){
+  if(activeSet>=0&&SETS[activeSet])return activeSet;
+  for(let i=SETS.length-1;i>=0;i--)if(SETS[i].songs&&SETS[i].songs.length)return i;
+  return -1;
+}
+function renderHome(){
+  const el=document.getElementById("home");
+  const now=new Date();
+  const day=now.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+  const si=featuredSet();
+  let html='<div class="home-in">';
+  html+='<p class="h-eyebrow">'+esc(day)+'</p>';
+  html+='<h1 class="h-title">Worship Book</h1>';
+  html+='<p class="h-sub">'+SONGS.length+' songs'+(SETS.length?' \u00b7 '+SETS.length+' service'+(SETS.length>1?'s':''):'')+'</p>';
+
+  if(si>=0){
+    const set=SETS[si];
+    const idx=(setSongs(si)||[]);
+    html+='<div class="card">';
+    html+='<div class="card-top"><p class="card-lbl">Next service</p>'+
+          '<h2 class="card-name">'+esc(set.name)+'</h2>'+
+          '<p class="card-meta">'+idx.length+' song'+(idx.length===1?'':'s')+'</p></div>';
+    idx.forEach((songIx,n)=>{
+      const m=parseSong(SONGS[songIx]).meta;
+      const capo=(m.capo&&m.capo!=="0")?'<small>capo '+esc(m.capo)+'</small>':'';
+      html+='<button class="setrow" data-song="'+songIx+'" data-set="'+si+'">'+
+            '<span class="num">'+(n+1)+'</span>'+
+            '<span class="who"><span class="nm">'+esc(m.title||"Untitled")+'</span>'+
+            (m.role?'<span class="rl">'+esc(m.role)+'</span>':'')+'</span>'+
+            '<span class="ky">'+esc(m.key||"?")+capo+'</span></button>';
+    });
+    if(idx.length)html+='<div class="card-foot"><button class="bigbtn" id="hStart">Start the set</button></div>';
+    else html+='<div class="card-foot"><p class="card-meta">No songs in this service yet.</p></div>';
+    html+='</div>';
+  }else{
+    html+='<div class="h-empty">No service set up yet. '+
+          '<b>Open the menu and press ＋</b> to make one — name it for the date, '+
+          'then pick its songs. It will show up here.</div>';
+  }
+
+  const last=lastOpened();
+  if(last>=0&&SONGS[last]){
+    const m=parseSong(SONGS[last]).meta;
+    html+='<div class="tiles"><button class="tile wide" data-song="'+last+'">'+
+          '<span><span class="n">'+esc(m.title||"Untitled")+'</span>'+
+          '<span class="l">Pick up where you left off</span></span>'+
+          '<span class="go">\u203a</span></button></div>';
+  }
+
+  html+='<div class="tiles">'+
+        '<button class="tile" id="hBrowse"><span class="n">'+SONGS.length+'</span><span class="l">All songs</span></button>'+
+        '<button class="tile" id="hSets"><span class="n">'+SETS.length+'</span><span class="l">Services</span></button>'+
+        '</div>';
+
+  const dot=syncOn()?syncState:"off";
+  html+='<div class="h-state"><span class="syncdot" data-s="'+dot+'"></span>'+
+        (syncOn()
+          ? (isAdmin?"Signed in as admin \u00b7 changes save for everyone"
+             : (syncState==="bad"?"Offline \u00b7 showing the last copy on this device"
+                :"Read only \u00b7 sign in from the menu to make changes"))
+          : "Saved on this device only")+
+        '</div>';
+  html+='</div>';
+  el.innerHTML=html;
+
+  el.querySelectorAll("[data-song]").forEach(b=>{
+    b.onclick=()=>{
+      const st=b.dataset.set;
+      if(st!==undefined)activeSet=parseInt(st,10);
+      openSong(parseInt(b.dataset.song,10));
+    };
+  });
+  const st=document.getElementById("hStart");
+  if(st)st.onclick=()=>{const l=setSongs(si)||[];if(l.length){activeSet=si;openSong(l[0]);}};
+  document.getElementById("hBrowse").onclick=()=>{activeSet=-1;hideHome();openDrawer();buildList();};
+  document.getElementById("hSets").onclick=()=>{hideHome();openDrawer();};
+}
+
+/* the last song opened, remembered per device */
+function lastOpened(){
+  try{const v=parseInt(localStorage.getItem(STORE+".last"),10);
+      return Number.isFinite(v)&&v>=0&&v<SONGS.length?v:-1;}catch(e){return -1;}
+}
+function rememberOpened(i){try{localStorage.setItem(STORE+".last",String(i));}catch(e){}}
+
 function openSong(i){
+  hideHome();
+  rememberOpened(i);
   state.i=i;state.steps=0;state.step=0;state.pos=-1;
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
   setPlaying(false);closeDrawer();render();
@@ -1168,6 +1364,7 @@ function openDrawer(){drawer.dataset.open="1";scrim.dataset.open="1";}
 function closeDrawer(){drawer.dataset.open="0";scrim.dataset.open="0";}
 document.getElementById("menu").onclick=openDrawer;
 document.getElementById("find").addEventListener("input",buildList);
+document.getElementById("homeBtn").onclick=showHome;
 scrim.onclick=closeDrawer;
 
 document.getElementById("up").onclick=()=>{state.steps++;render();};
@@ -2055,6 +2252,7 @@ document.getElementById("edDelete").onclick=()=>{
   ed.dataset.open="0";
   saveLocal();
   render();
+  renderHome();
   toast("Deleted "+title);
 };
 
@@ -2203,6 +2401,7 @@ document.getElementById("signBtn").onclick=signIn;
   showDwell();
   render();
   paintDirty();
+  showHome();          /* land on the home screen, not on whichever song is first */
   if(bootNote)setTimeout(()=>toast(bootNote),600);
 })();
 </script>

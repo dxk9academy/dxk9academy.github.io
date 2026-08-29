@@ -74,6 +74,29 @@ Key points:
   transposed or capo'd when they fix a chord, `pkApply` converts it back first.
   Don't break this.
 
+## Home
+
+`showHome` / `renderHome`, a full-screen view over the reader, and where the app
+opens. It answers the two questions a musician has in the first two seconds:
+**which service is next, and what songs and keys are in it** — the pair the
+established worship apps lead with, because seeing the keys early is how someone
+spots a song they need to rehearse.
+
+- The featured service is the one open, else the newest with songs in it.
+- Each row is number, title, role, key, and capo when there is one. Tapping a
+  row opens that song *and* makes its service active, so next/previous then walk
+  the set.
+- **Start the set** opens song one.
+- A resume tile appears for the last song opened (`worshipbook.v1.last`).
+- The footer line states the true sync state, so nobody assumes their edits are
+  shared when they are not.
+
+`body[data-home="1"]` hides the reader, the sticky header and the play bar.
+`openSong` leaves home; the `◂` button in the top bar returns to it.
+
+The app used to open on whichever song happened to be first, with no context.
+Don't go back to that.
+
 ## Performance position — the important idea
 
 A section is written once, but `{map:}` may play it several times. `V1 - C - V2 -
