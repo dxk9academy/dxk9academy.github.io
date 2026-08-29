@@ -261,9 +261,31 @@ body[data-readonly="1"] .drawer footer{display:none}
 body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
 /* the line being sung — must read from arm's length in a dim room */
 .line.active{
-  background:linear-gradient(90deg,rgba(95,168,160,.30),rgba(95,168,160,.06));
-  box-shadow:inset 3px 0 var(--section);
-  border-radius:5px
+  background:rgba(95,168,160,.22);
+  box-shadow:inset 4px 0 var(--section),0 0 0 1px rgba(95,168,160,.45);
+  border-radius:6px;
+  padding:2px 6px;margin-left:-6px;margin-right:-6px
+}
+.line.active .l{color:#fff}
+.line.active .c{color:#FFD79A}
+.setbar{display:flex;gap:6px;margin-bottom:8px}
+.setbar select{
+  flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--text);font:inherit;font-size:15px;padding:10px 9px;outline:none
+}
+.mini2{
+  width:42px;border:1px solid var(--line);border-radius:9px;background:var(--panel);
+  color:var(--text);font-size:15px;font-weight:700
+}
+.addsongs{
+  width:100%;border:1px dashed var(--section);border-radius:9px;background:none;
+  color:var(--section);font-size:.78em;font-weight:700;padding:9px;margin-bottom:9px;display:none
+}
+body[data-setmode="set"] .addsongs{display:block}
+.addsongs[data-on="1"]{border-style:solid;background:var(--section);color:#101010}
+.item .pick{
+  float:right;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);
+  color:var(--text);font-size:.9em;font-weight:700;width:30px;height:30px;margin-left:8px
 }
 .find{
   width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;
@@ -294,7 +316,13 @@ body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
 <div class="scrim" id="scrim"></div>
 <nav class="drawer" id="drawer" aria-label="Set list">
   <h2>Set list</h2>
-  <input class="find" id="find" placeholder="Search songs or folders" aria-label="Search songs or folders">
+  <div class="setbar">
+    <select id="setPick" aria-label="Choose a service"></select>
+    <button class="mini2" id="setNew" title="New service">＋</button>
+    <button class="mini2" id="setEdit" title="Rename or delete this service">⋯</button>
+  </div>
+  <button class="addsongs" id="setAdd">＋ Add songs to this service</button>
+  <input class="find" id="find" placeholder="Search songs" aria-label="Search songs">
   <div class="list" id="list"></div>
   <button class="edit-open" id="openEdit">＋ Add or edit a song</button>
   <footer>Edits live on your phone until you download the file and upload it to GitHub. That upload is what everyone else sees.</footer>
@@ -317,7 +345,7 @@ body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
     <label>Key<input id="fKey" placeholder="G"></label>
     <label>Capo<input id="fCapo" placeholder="0" inputmode="numeric"></label>
     <label>Tempo<input id="fTempo" placeholder="72" inputmode="numeric"></label>
-    <label>Folder<input id="fFolder" placeholder="Sunday Morning"></label>
+    <label>Add to service<select id="fSet"></select></label>
     <label class="wide">Playing order<input id="fMap" placeholder="Tap the buttons below"></label>
   </div>
   <div class="mapbuild">
@@ -371,7 +399,8 @@ body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
       <p class="song-title" id="title">—</p>
       <div class="song-meta" id="meta"></div>
     </div>
-    <button class="edit-toggle" id="editToggle" aria-pressed="false" aria-label="Edit chords">✎</button>
+    <button class="edit-toggle" id="editToggle" aria-pressed="false" aria-label="Edit chords" title="Tap chords to change them">✎</button>
+    <button class="edit-toggle" id="songEdit" aria-label="Edit this song's words and chords" title="Edit this song">✏︎</button>
   </div>
   <div class="ctrls">
     <div class="pill">Key <button id="down" aria-label="Transpose down">–</button><b id="keyOut">—</b><button id="up" aria-label="Transpose up">+</button></div>
@@ -649,29 +678,38 @@ function pairsToText(pairs){
 const sheet=document.getElementById("sheet");
 let pick={s:0,l:0,p:0,root:"C",acc:"",qual:"",bass:"",bassAcc:"",insertAt:null};
 
-function paintPicker(){
-  const mk=(box,vals,key)=>{
-    box.innerHTML="";
+/* The rows are built ONCE. Rebuilding them on every tap detached the button
+   that was just tapped, so the outside-click handler could no longer see that
+   the click came from inside the sheet and closed the picker under the user. */
+const PK_ROWS=[
+  ["pkRoot","root",["C","D","E","F","G","A","B"].map(v=>({label:v,val:v}))],
+  ["pkAcc","acc",[{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}]],
+  ["pkQual","qual",[{label:"major",val:""},{label:"m",val:"m"},{label:"7",val:"7"},{label:"m7",val:"m7"},
+      {label:"maj7",val:"maj7"},{label:"sus2",val:"sus2"},{label:"sus4",val:"sus4"},
+      {label:"add9",val:"add9"},{label:"dim",val:"dim"}]],
+  ["pkBass","bass",[{label:"none",val:""}].concat(["C","D","E","F","G","A","B"].map(v=>({label:v,val:v})))],
+  ["pkBassAcc","bassAcc",[{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}]]
+];
+let pkBuilt=false;
+function buildPickerRows(){
+  PK_ROWS.forEach(([id,key,vals])=>{
+    const box=document.getElementById(id);box.innerHTML="";
     vals.forEach(v=>{
       const b=document.createElement("button");
-      b.className="k";b.textContent=v.label;
-      b.dataset.sel=pick[key]===v.val?"1":"0";
+      b.className="k";b.textContent=v.label;b.dataset.val=v.val;
       b.onclick=()=>{pick[key]=v.val;paintPicker();};
       box.appendChild(b);
     });
-  };
-  mk(document.getElementById("pkRoot"),
-     ["C","D","E","F","G","A","B"].map(v=>({label:v,val:v})),"root");
-  mk(document.getElementById("pkAcc"),
-     [{label:"natural",val:""},{label:"♯",val:"#"},{label:"♭",val:"b"}],"acc");
-  mk(document.getElementById("pkQual"),
-     [{label:"major",val:""},{label:"m",val:"m"},{label:"7",val:"7"},{label:"m7",val:"m7"},
-      {label:"maj7",val:"maj7"},{label:"sus2",val:"sus2"},{label:"sus4",val:"sus4"},
-      {label:"add9",val:"add9"},{label:"dim",val:"dim"}],"qual");
-  mk(document.getElementById("pkBass"),
-     [{label:"none",val:""}].concat(["C","D","E","F","G","A","B"].map(v=>({label:v,val:v}))),"bass");
-  mk(document.getElementById("pkBassAcc"),
-     [{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}],"bassAcc");
+  });
+  pkBuilt=true;
+}
+function paintPicker(){
+  if(!pkBuilt)buildPickerRows();
+  PK_ROWS.forEach(([id,key])=>{
+    [...document.getElementById(id).children].forEach(b=>{
+      b.dataset.sel=pick[key]===b.dataset.val?"1":"0";
+    });
+  });
   document.getElementById("pkBassAcc").style.opacity=pick.bass?"1":".35";
   document.getElementById("pkPrev").textContent=pickChord();
 }
@@ -754,7 +792,11 @@ songEl.addEventListener("click",e=>{
 /* close the picker by tapping anywhere off it, or with Escape */
 document.addEventListener("click",e=>{
   if(sheet.dataset.open!=="1")return;
-  if(e.target.closest("#sheet")||e.target.closest("#song"))return;
+  /* composedPath is captured at dispatch, so it still names the sheet even if
+     the handler detached the node that was clicked */
+  const path=e.composedPath?e.composedPath():[];
+  if(path.includes(sheet)||path.includes(songEl))return;
+  if(e.target.closest&&(e.target.closest("#sheet")||e.target.closest("#song")))return;
   closePicker();
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closePicker();});
@@ -792,44 +834,109 @@ function base(l){
   return l.replace(/\s+/g,"");
 }
 
-const shut=new Set();          /* folders the user collapsed */
+/* ============================================================
+   SERVICES — a service is a named, ordered list of songs from the
+   library, e.g. "Sunday 7 Sept". A song may appear in any number of
+   services; the library keeps exactly one copy of the words.
+   Songs are referenced by title.
+   ============================================================ */
+let activeSet=-1, addMode=false;
+function titleOf(src){return (parseSong(src).meta.title||"Untitled").trim();}
+function indexOfTitle(t){return SONGS.findIndex(x=>titleOf(x)===t);}
+function setSongs(si){
+  if(si<0||!SETS[si])return null;
+  return SETS[si].songs.map(indexOfTitle).filter(i=>i>=0);
+}
+function paintSetPicker(){
+  const sel=document.getElementById("setPick");
+  sel.innerHTML="";
+  const all=document.createElement("option");
+  all.value="-1";all.textContent="All songs ("+SONGS.length+")";
+  sel.appendChild(all);
+  SETS.forEach((st,i)=>{
+    const o=document.createElement("option");
+    o.value=String(i);o.textContent=st.name+" ("+st.songs.length+")";
+    sel.appendChild(o);
+  });
+  sel.value=String(activeSet);
+  document.body.dataset.setmode=activeSet>=0?"set":"all";
+  const btn=document.getElementById("setAdd");
+  btn.dataset.on=addMode?"1":"0";
+  btn.textContent=addMode?"✓ Done adding":"＋ Add songs to this service";
+}
 function buildList(){
   const list=document.getElementById("list");list.innerHTML="";
+  paintSetPicker();
   const q=(document.getElementById("find").value||"").trim().toLowerCase();
-  const groups=new Map();
-  SONGS.forEach((src,i)=>{
-    const m=parseSong(src).meta;
-    const folder=(m.folder||m.role||"Songs").trim();
-    const hay=((m.title||"")+" "+folder+" "+(m.role||"")+" "+(m.key||"")).toLowerCase();
-    if(q&&!hay.includes(q))return;
-    if(!groups.has(folder))groups.set(folder,[]);
-    groups.get(folder).push({i,m});
-  });
-  if(!groups.size){
-    list.innerHTML='<p class="nores">Nothing matches “'+q.replace(/[<&]/g,"")+'”.</p>';
+  /* which songs, and in what order */
+  let rows;
+  if(activeSet>=0&&!addMode){
+    rows=(setSongs(activeSet)||[]).map(i=>({i,m:parseSong(SONGS[i]).meta}));
+  }else{
+    rows=SONGS.map((src,i)=>({i,m:parseSong(src).meta}));
+  }
+  if(q)rows=rows.filter(({m})=>
+    ((m.title||"")+" "+(m.role||"")+" "+(m.key||"")).toLowerCase().includes(q));
+  if(!rows.length){
+    list.innerHTML='<p class="nores">'+
+      (activeSet>=0&&!addMode&&!q
+        ?'This service has no songs yet. Press “Add songs”.'
+        :'Nothing matches.')+'</p>';
     return;
   }
-  [...groups.keys()].sort((a,b)=>a.localeCompare(b)).forEach(folder=>{
-    const open=q?true:!shut.has(folder);
-    const wrap=document.createElement("div");
-    wrap.className="fold";wrap.dataset.open=open?"1":"0";
-    const head=document.createElement("button");
-    head.className="fold-head";
-    head.innerHTML='<span class="chev">▾</span>'+folder+'<span class="cnt">'+groups.get(folder).length+'</span>';
-    head.onclick=()=>{shut.has(folder)?shut.delete(folder):shut.add(folder);buildList();};
-    const body=document.createElement("div");body.className="fold-body";
-    groups.get(folder).forEach(({i,m})=>{
-      const b=document.createElement("button");
-      b.className="item";
-      b.setAttribute("aria-current",i===state.i?"true":"false");
-      b.innerHTML='<div class="n">'+(m.title||"Untitled")+'</div><div class="m">'+
-                  (m.role||"")+" · "+(m.key||"?")+(m.capo&&m.capo!=="0"?" · capo "+m.capo:"")+"</div>";
-      b.onclick=()=>{openSong(i);};
-      body.appendChild(b);
-    });
-    wrap.appendChild(head);wrap.appendChild(body);list.appendChild(wrap);
+  rows.forEach(({i,m})=>{
+    const b=document.createElement("button");
+    b.className="item";
+    b.setAttribute("aria-current",i===state.i?"true":"false");
+    let extra="";
+    if(activeSet>=0&&addMode){
+      const inSet=(SETS[activeSet].songs||[]).includes(titleOf(SONGS[i]));
+      extra='<span class="pick">'+(inSet?"✓":"＋")+'</span>';
+    }else if(activeSet>=0){
+      extra='<span class="pick">−</span>';
+    }
+    b.innerHTML=extra+'<div class="n">'+(m.title||"Untitled")+'</div><div class="m">'+
+                (m.role||"")+" · "+(m.key||"?")+(m.capo&&m.capo!=="0"?" · capo "+m.capo:"")+"</div>";
+    b.onclick=(ev)=>{
+      if(activeSet>=0&&ev.target.closest(".pick")){
+        const t=titleOf(SONGS[i]), arr=SETS[activeSet].songs;
+        const at=arr.indexOf(t);
+        if(addMode){ at<0?arr.push(t):arr.splice(at,1); }
+        else if(at>=0){ arr.splice(at,1); }
+        buildList();return;
+      }
+      openSong(i);
+    };
+    list.appendChild(b);
   });
 }
+document.getElementById("setPick").onchange=e=>{
+  activeSet=parseInt(e.target.value,10);addMode=false;buildList();
+};
+document.getElementById("setNew").onclick=()=>{
+  const name=(prompt("Name this service — a date works well, e.g. Sunday 7 Sept")||"").trim();
+  if(!name)return;
+  SETS.push({name,songs:[]});
+  activeSet=SETS.length-1;addMode=true;buildList();
+  toast("Service created — now pick its songs");
+};
+document.getElementById("setEdit").onclick=()=>{
+  if(activeSet<0){toast("Choose a service first");return;}
+  const cur=SETS[activeSet];
+  const name=prompt('Rename this service, or clear the box to delete it.',cur.name);
+  if(name===null)return;
+  if(!name.trim()){
+    if(confirm('Delete the service "'+cur.name+'"? The songs stay in the library.')){
+      SETS.splice(activeSet,1);activeSet=-1;addMode=false;buildList();toast("Service deleted");
+    }
+    return;
+  }
+  cur.name=name.trim();buildList();toast("Renamed");
+};
+document.getElementById("setAdd").onclick=()=>{
+  if(activeSet<0)return;
+  addMode=!addMode;buildList();
+};
 function openSong(i){
   state.i=i;state.steps=0;state.step=0;
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
@@ -841,7 +948,10 @@ function openSong(i){
    scroll rate drifts with the frame rate.
    ============================================================ */
 let playing=false,rafId=0,lastT=0,speed=1;
-const SPEEDS=[0.5,0.75,1,1.5,2];
+/* A sung line lasts roughly four seconds and a line is about 40px, so a
+   comfortable read is ~10px per second. 1.0x is that; the rest bracket it. */
+const PX_PER_SEC=10;
+const SPEEDS=[0.4,0.6,0.8,1,1.3,1.7,2.2,3];
 function setPlaying(on){
   playing=on;
   document.body.classList.toggle("playing",on);
@@ -853,14 +963,19 @@ function setPlaying(on){
   else{if(rafId)cancelAnimationFrame(rafId);rafId=0;
        const a=document.querySelector(".line.active");if(a)a.classList.remove("active");}
 }
+/* A worship scroll is slow — around a fifth of a pixel per frame — and
+   scrollBy throws sub-pixel amounts away, so we keep the exact position
+   ourselves and set it absolutely. */
+let scrollPos=0;
 function tick(t){
   if(!playing){rafId=0;return;}
-  if(!lastT)lastT=t;
-  const dt=t-lastT;lastT=t;
-  const before=window.scrollY;
-  window.scrollBy(0,dt*speed*0.035);
-  /* stop at the end instead of grinding against the bottom */
-  if(window.scrollY===before&&dt>0&&window.scrollY>0){setPlaying(false);toast("End of song");return;}
+  if(!lastT){lastT=t;scrollPos=window.scrollY;}
+  const dt=Math.min(t-lastT,100);   /* a backgrounded tab must not lurch */
+  lastT=t;
+  scrollPos+=dt/1000*PX_PER_SEC*speed;
+  const max=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+  if(scrollPos>=max){window.scrollTo(0,max);markLine(true);setPlaying(false);toast("End of song");return;}
+  window.scrollTo(0,scrollPos);
   markLine();
   rafId=requestAnimationFrame(tick);
 }
@@ -914,6 +1029,12 @@ document.addEventListener("keydown",e=>{
   if(["ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();nextSong(-1);}
 });
 function nextSong(d){
+  /* inside a service, next/previous follows the service order */
+  const seq=(activeSet>=0?setSongs(activeSet):null);
+  if(seq&&seq.length){
+    const at=seq.indexOf(state.i);
+    if(at>=0){const j=at+d;if(j<0||j>=seq.length)return;openSong(seq[j]);return;}
+  }
   const i=state.i+d;
   if(i<0||i>=SONGS.length)return;
   openSong(i);
@@ -1437,6 +1558,9 @@ It is [E]right to give Him [A]thanks and praise
 
 ];
 
+/* Services (set lists). One line, rewritten wholesale on download. */
+let SETS=[];
+
 /* ---------- keep the map honest while you scroll ---------- */
 let ticking=false;
 window.addEventListener("scroll",()=>{
@@ -1506,6 +1630,11 @@ function toast(msg){
   setTimeout(()=>toastEl.dataset.show="0",1600);
 }
 document.getElementById("openEdit").onclick=()=>{closeDrawer();loadInto(SONGS[state.i]);ed.dataset.open="1";};
+document.getElementById("songEdit").onclick=()=>{
+  setPlaying(false);
+  loadInto(SONGS[state.i]);
+  ed.dataset.open="1";
+};
 document.getElementById("edClose").onclick=()=>{ed.dataset.open="0";};
 
 const F=id=>document.getElementById(id);
@@ -1517,7 +1646,13 @@ function loadInto(t){
   });
   F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";
   F("fKey").value=meta.key||"C";F("fCapo").value=meta.capo||"0";
-  F("fTempo").value=meta.tempo||"";F("fFolder").value=meta.folder||"";F("fMap").value=meta.map||"";
+  F("fTempo").value=meta.tempo||"";F("fMap").value=meta.map||"";
+  const sel=F("fSet");sel.innerHTML="";
+  const none=document.createElement("option");none.value="-1";none.textContent="— none —";
+  sel.appendChild(none);
+  SETS.forEach((st,i)=>{const o=document.createElement("option");
+    o.value=String(i);o.textContent=st.name;sel.appendChild(o);});
+  sel.value=String(activeSet);
   edText.value=body.join("\n").trim();
   refreshMapChips();
 }
@@ -1525,7 +1660,6 @@ function assemble(){
   const g=id=>F(id).value.trim();
   return "{title: "+g("fTitle")+"}\n{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
     "}\n{capo: "+(g("fCapo")||"0")+"}\n"+(g("fTempo")?"{tempo: "+g("fTempo")+"}\n":"")+
-    (g("fFolder")?"{folder: "+g("fFolder")+"}\n":"")+
     "{map: "+g("fMap")+"}\n"+edText.value.trim();
 }
 document.getElementById("edLoad").onclick=()=>loadInto(SONGS[state.i]);
@@ -1624,6 +1758,11 @@ document.getElementById("edSave").onclick=()=>{
   const at=SONGS.findIndex(s=>(s.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
   if(at>-1){SONGS[at]=t;state.i=at;toast("Updated "+title);}
   else{SONGS.push(t);state.i=SONGS.length-1;toast("Added "+title);}
+  const into=parseInt(F("fSet").value,10);
+  if(into>=0&&SETS[into]&&!SETS[into].songs.includes(title)){
+    SETS[into].songs.push(title);
+    toast("Added to "+SETS[into].name);
+  }
   state.steps=0;state.step=0;
   state.capo=parseInt(parseSong(t).meta.capo||"0",10)||0;
   ed.dataset.open="0";render();
@@ -1643,7 +1782,11 @@ function buildFile(){
                 .replace(/\$\{/g,"\\${").replace(/<\/script/gi,"<\\/script");
   const block="const SONGS=[\n\n"+SONGS.map(s=>"`"+esc(s)+"`").join(",\n\n")+"\n\n];";
   /* function form: a literal replacement would interpret $& and friends */
-  return "<!DOCTYPE html>\n"+doc.outerHTML.replace(/const SONGS=\[[\s\S]*?\n\];/,()=>block);
+  let out=doc.outerHTML.replace(/const SONGS=\[[\s\S]*?\n\];/,()=>block);
+  /* SETS lives on one line, so match to end of line — a service name may
+     legitimately contain a semicolon */
+  out=out.replace(/let SETS=.*\n/,()=>"let SETS="+JSON.stringify(SETS)+";\n");
+  return "<!DOCTYPE html>\n"+out;
 }
 document.getElementById("edDownload").onclick=()=>{
   const blob=new Blob([buildFile()],{type:"text/html"});

@@ -88,9 +88,27 @@ the section it points at.
 Anything that navigates must work on step indexes, never on section names.
 Matching by name is what made every chorus chip light up at once.
 
+## Services (set lists)
+
+`SETS` is a one-line array of `{name, songs:[title]}` — a named, ordered list of
+songs for one service, e.g. `Sunday 7 Sept`. The library holds exactly one copy
+of each song's words; a song may sit in any number of services. References are
+by **title**, so renaming a song in the editor detaches it from its services.
+
+`buildFile()` rewrites the `let SETS=` line wholesale with `JSON.stringify`, and
+matches to end of line rather than to the first `;`, because a service name may
+legitimately contain one.
+
+With a service open, the set list shows only its songs in its order, and
+next/previous song walks the service instead of the library.
+
 ## Auto-scroll
 
-`setPlaying` / `tick` — a `requestAnimationFrame` loop, not a timer. While it
+`setPlaying` / `tick` — a `requestAnimationFrame` loop, not a timer. A worship
+scroll is about 10px per second, which is under a fifth of a pixel per frame,
+and `scrollBy` discards sub-pixel amounts — so `tick` keeps the exact position
+in `scrollPos` and sets it absolutely. `dt` is clamped so a backgrounded tab
+does not lurch on return. While it
 runs the header is frozen compact: collapsing it mid-song changes the sticky
 header's height, which shifts the page and makes the scroll visibly lurch.
 A drag pauses; a tap does not. `main` keeps a large bottom padding so the last
@@ -145,6 +163,17 @@ Two things worth re-checking after any change, because both broke silently once:
 typing a space in the song editor (the keyboard shortcuts must not steal it),
 and downloading twice in a row (song text must come back byte-identical).
 
+The chord picker's rows are built **once**, in `buildPickerRows`. Rebuilding
+them on every tap detached the button that had just been tapped, so the
+outside-click handler could no longer tell the click came from inside the sheet
+and closed the picker before Apply could be reached. Never rebuild a control
+inside its own click handler; repaint its state instead.
+
 Also check, on a repeated-section song such as `How Great Is Our God`: exactly
 one roadmap chip is lit at any time, Prev/Next actually scrolls, and the last
 section can still be reached by scrolling.
+
+Assert on what the user can SEE, not on what a function returns. Two bugs here
+passed their tests because the test clicked a button programmatically while it
+was off-screen: the picker had already slid away, and tapping a chord did
+nothing because edit mode was not armed.
