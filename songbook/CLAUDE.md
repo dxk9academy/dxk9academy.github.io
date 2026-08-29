@@ -38,6 +38,9 @@ Everything lives in `index.html`:
 | `serialize(song)` | The inverse of `parseSong`. Used when writing edits back. |
 | `render()` | Draws the current song. Sets `data-s`/`data-l`/`data-p` on each pair so edits can find their source position. |
 | `shortOf(label)` | Maps a section label to its map token (`Verse 1` → `v1`). Must stay in sync with the `{map:}` tokens or roadmap chips won't jump. |
+| `mapSteps(song)` | The arrangement as a list of **performance steps**. |
+| `goStep(i)` / `paintSteps()` | Move to, and highlight, one step. |
+| `markLine()` | Highlights the line under the reading position while auto-scrolling. |
 | `convertText(raw)` | Converts old chords-above-lyrics charts to inline format. Runs automatically on paste. |
 | `buildFile()` | Clones the live DOM, swaps in the current `SONGS` array, returns a complete new `index.html` for download. Song text is escaped on the way back into the backticks — without that, backslashes are eaten on every publish. |
 | `SONGS[]` | The song library. Array of template strings, one per song. |
@@ -67,6 +70,31 @@ Key points:
 - Chord edits are stored in the song's **written** key. If the user is
   transposed or capo'd when they fix a chord, `pkApply` converts it back first.
   Don't break this.
+
+## Performance position — the important idea
+
+A section is written once, but `{map:}` may play it several times. `V1 - C - V2 -
+C - Br - C x2` has one Chorus in the body and **three chorus positions in the
+service**. So the app tracks `state.step`, an index into the map, separate from
+the section it points at.
+
+- Exactly one chip is ever lit: the one for `state.step`.
+- Prev/Next move by step, so the third chorus is a different place from the first.
+- Scrolling cannot tell which chorus you are on, so it only moves the step when
+  the section under the reading line stops matching the current step, and then
+  takes the **nearest step forward** that does match. Prev/Next is how a musician
+  corrects it.
+
+Anything that navigates must work on step indexes, never on section names.
+Matching by name is what made every chorus chip light up at once.
+
+## Auto-scroll
+
+`setPlaying` / `tick` — a `requestAnimationFrame` loop, not a timer. While it
+runs the header is frozen compact: collapsing it mid-song changes the sticky
+header's height, which shifts the page and makes the scroll visibly lurch.
+A drag pauses; a tap does not. `main` keeps a large bottom padding so the last
+section can still reach the reading line.
 
 ## Publishing
 
@@ -100,11 +128,9 @@ actually publish a change that others see.
 - No offline caching yet. A service worker would make it work when the church
   wifi drops. This is the highest-value next addition.
 - No print stylesheet.
-- Roadmap chips highlight by matching the section under the reading line, so a
-  song whose `{map:}` repeats a section (`V1 - C - V2 - C - Br - C`) lights up
-  every Chorus chip at once. Fixing this properly needs a performance-position
-  concept: a step index into the map, distinct from the section it points at.
-  That is the prerequisite for next/previous-section controls and auto-scroll.
+- Chord placement in some converted songs still needs a musician's pass.
+- No print stylesheet.
+- No offline caching yet (deliberately parked).
 - `Joy` has a duplicated Verse 2 inherited from the source file — flagged with
   a `{cue:}`, still needs the real words.
 
@@ -118,3 +144,7 @@ section, edit mode (scroll must still work), paste conversion, and that
 Two things worth re-checking after any change, because both broke silently once:
 typing a space in the song editor (the keyboard shortcuts must not steal it),
 and downloading twice in a row (song text must come back byte-identical).
+
+Also check, on a repeated-section song such as `How Great Is Our God`: exactly
+one roadmap chip is lit at any time, Prev/Next actually scrolls, and the last
+section can still be reached by scrolling.

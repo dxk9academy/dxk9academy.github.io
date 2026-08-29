@@ -91,7 +91,9 @@ body[data-compact="1"] .song-meta{display:none}
 .chip .rep{color:var(--cue);margin-left:4px}
 
 /* ---------- song body ---------- */
-main{padding:4px 14px 60vh 14px;max-width:900px;margin:0 auto}
+/* enough tail room that the LAST section can still scroll up to the reading
+   line — the play bar took some of what the old 60vh allowed for */
+main{padding:4px 14px 88vh 14px;max-width:900px;margin:0 auto}
 .sec{margin:18px 0 0}
 .sec-label{
   font-size:.72em;letter-spacing:.14em;text-transform:uppercase;
@@ -244,8 +246,42 @@ body[data-readonly="1"] .drawer footer{display:none}
   -webkit-text-size-adjust:100%;
   min-height:45vh
 }
+.playbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:6px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(14,20,32,.94);border-top:1px solid var(--line);
+  backdrop-filter:blur(12px)
+}
+.pb{
+  flex:1;min-height:46px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);font-size:.82em;font-weight:700;color:var(--text)
+}
+.pb.go{background:var(--chord);color:#101010;border-color:var(--chord)}
+.pb:active{opacity:.75}
+body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
+/* the line being sung — must read from arm's length in a dim room */
+.line.active{
+  background:linear-gradient(90deg,rgba(95,168,160,.30),rgba(95,168,160,.06));
+  box-shadow:inset 3px 0 var(--section);
+  border-radius:5px
+}
+.find{
+  width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--text);font:inherit;font-size:15px;padding:10px 11px;outline:none;margin-bottom:10px
+}
+.find:focus{border-color:var(--chord)}
+.fold{margin:2px 0 8px}
+.fold-head{
+  width:100%;display:flex;align-items:center;gap:8px;padding:8px 4px;text-align:left;
+  font-size:.68em;letter-spacing:.13em;text-transform:uppercase;color:var(--chord);font-weight:700
+}
+.fold-head .cnt{margin-left:auto;color:var(--muted);letter-spacing:.06em}
+.fold-head .chev{transition:transform .16s}
+.fold[data-open="0"] .chev{transform:rotate(-90deg)}
+.fold[data-open="0"] .fold-body{display:none}
+.nores{font-size:.8em;color:var(--muted);padding:10px 4px}
 .toast{
-  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+  position:fixed;left:50%;bottom:86px;transform:translateX(-50%);
   background:var(--chord);color:#101010;font-weight:700;font-size:.82em;
   padding:9px 16px;border-radius:999px;z-index:70;opacity:0;pointer-events:none;
   transition:opacity .2s
@@ -258,6 +294,7 @@ body[data-readonly="1"] .drawer footer{display:none}
 <div class="scrim" id="scrim"></div>
 <nav class="drawer" id="drawer" aria-label="Set list">
   <h2>Set list</h2>
+  <input class="find" id="find" placeholder="Search songs or folders" aria-label="Search songs or folders">
   <div class="list" id="list"></div>
   <button class="edit-open" id="openEdit">＋ Add or edit a song</button>
   <footer>Edits live on your phone until you download the file and upload it to GitHub. That upload is what everyone else sees.</footer>
@@ -280,6 +317,7 @@ body[data-readonly="1"] .drawer footer{display:none}
     <label>Key<input id="fKey" placeholder="G"></label>
     <label>Capo<input id="fCapo" placeholder="0" inputmode="numeric"></label>
     <label>Tempo<input id="fTempo" placeholder="72" inputmode="numeric"></label>
+    <label>Folder<input id="fFolder" placeholder="Sunday Morning"></label>
     <label class="wide">Playing order<input id="fMap" placeholder="Tap the buttons below"></label>
   </div>
   <div class="mapbuild">
@@ -298,6 +336,13 @@ body[data-readonly="1"] .drawer footer{display:none}
   </div>
   <p class="ed-body-label">Words and chords — paste anything, it converts itself</p>
   <textarea id="edText" spellcheck="false" placeholder="Paste a chart straight from your old file or a tab site.&#10;&#10;Or type it plainly:&#10;&#10;Verse 1&#10;      G            D&#10;Standing on this mountaintop"></textarea>
+</div>
+
+<div class="playbar" id="playbar">
+  <button class="pb" id="pbPrev" aria-label="Previous section">‹ Prev</button>
+  <button class="pb go" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
+  <button class="pb" id="pbNext" aria-label="Next section">Next ›</button>
+  <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -444,10 +489,53 @@ function toPairs(text){
    ============================================================ */
 const ALLOW_EDIT = true;
 
-let state={i:0,steps:0,capo:0,fs:17};
+let state={i:0,steps:0,capo:0,fs:17,step:0};
 let jumping=false,jumpTimer=null,keepScroll=false;
 
 function currentSong(){return parseSong(SONGS[state.i]);}
+
+/* The arrangement is a list of PERFORMANCE STEPS. A section lives in the body
+   once, but the map may play it several times; step 6 and step 2 can both be
+   the Chorus and still be different places in the service. Everything that
+   navigates works on step indexes, never on section names. */
+function mapSteps(s){
+  return (s.meta.map||"").split("-").map(x=>x.trim()).filter(Boolean).map(tok=>{
+    const rep=tok.match(/x(\d+)$/i);
+    const label=tok.replace(/\s*x\d+$/i,"");
+    return {label,rep:rep?rep[1]:null,short:label.toLowerCase().replace(/\s+/g,"")};
+  });
+}
+function sectionForStep(i){
+  const st=mapSteps(currentSong())[i];
+  if(!st)return null;
+  return [...document.querySelectorAll(".sec")].find(el=>el.dataset.short===st.short)||null;
+}
+function scrollToStep(i,smooth){
+  const t=sectionForStep(i); if(!t)return;
+  const off=document.querySelector(".stickytop").getBoundingClientRect().height;
+  jumping=true;
+  window.scrollTo({top:t.getBoundingClientRect().top+window.scrollY-off-6,behavior:smooth?"smooth":"auto"});
+  clearTimeout(jumpTimer);
+  jumpTimer=setTimeout(()=>{jumping=false;},650);
+}
+function goStep(i){
+  const steps=mapSteps(currentSong());
+  if(!steps.length)return;
+  state.step=Math.max(0,Math.min(steps.length-1,i));
+  paintSteps(); scrollToStep(state.step,true);
+}
+/* highlight exactly ONE chip: the current step */
+function paintSteps(){
+  const rm=document.getElementById("roadmap");
+  const kids=[...rm.children];
+  kids.forEach((c,i)=>c.dataset.live=i===state.step?"1":"0");
+  const cur=kids[state.step];
+  if(cur){
+    const l=cur.offsetLeft,r=l+cur.offsetWidth;
+    if(l<rm.scrollLeft+12)rm.scrollLeft=l-12;
+    else if(r>rm.scrollLeft+rm.clientWidth-12)rm.scrollLeft=r-rm.clientWidth+12;
+  }
+}
 
 function render(){
   const s=currentSong();
@@ -466,25 +554,13 @@ function render(){
 
   /* roadmap chips */
   const rm=document.getElementById("roadmap");rm.innerHTML="";
-  (s.meta.map||"").split("-").map(x=>x.trim()).filter(Boolean).forEach((step,i)=>{
-    const rep=step.match(/x(\d+)$/i);
+  mapSteps(s).forEach((st,i)=>{
     const b=document.createElement("button");
     b.className="chip";
-    b.dataset.short=step.replace(/\s*x\d+$/i,"").toLowerCase().replace(/\s+/g,"");
-    b.innerHTML=step.replace(/\s*x\d+$/i,"")+(rep?'<span class="rep">×'+rep[1]+"</span>":"");
-    b.onclick=()=>{
-      const t=[...document.querySelectorAll(".sec")]
-        .find(el=>el.dataset.short===b.dataset.short);
-      if(t){
-        const off=document.querySelector(".stickytop").getBoundingClientRect().height;
-        jumping=true;
-        window.scrollTo({top:t.getBoundingClientRect().top+window.scrollY-off-6,behavior:"smooth"});
-        clearTimeout(jumpTimer);
-        jumpTimer=setTimeout(()=>{jumping=false;},650);
-      }
-      [...rm.children].forEach(c=>c.dataset.live="0");
-      b.dataset.live="1";
-    };
+    b.dataset.short=st.short;
+    b.dataset.step=i;
+    b.innerHTML=st.label+(st.rep?'<span class="rep">×'+st.rep+"</span>":"");
+    b.onclick=()=>goStep(i);
     rm.appendChild(b);
   });
 
@@ -545,11 +621,12 @@ function render(){
     const y=keepScroll;keepScroll=false;
     requestAnimationFrame(()=>window.scrollTo(0,y));
   }else window.scrollTo(0,0);
+  paintSteps();
   buildList();
 }
 
 /* ---------- turn the parsed song back into text ---------- */
-const ORDER=["title","role","key","capo","tempo","map"];
+const ORDER=["title","role","key","capo","tempo","folder","map"];
 function serialize(song){
   const out=[];
   ORDER.forEach(k=>{if(song.meta[k]!==undefined)out.push("{"+k+": "+song.meta[k]+"}");});
@@ -715,25 +792,103 @@ function base(l){
   return l.replace(/\s+/g,"");
 }
 
+const shut=new Set();          /* folders the user collapsed */
 function buildList(){
   const list=document.getElementById("list");list.innerHTML="";
+  const q=(document.getElementById("find").value||"").trim().toLowerCase();
+  const groups=new Map();
   SONGS.forEach((src,i)=>{
     const m=parseSong(src).meta;
-    const b=document.createElement("button");
-    b.className="item";
-    b.setAttribute("aria-current",i===state.i?"true":"false");
-    b.innerHTML='<div class="n">'+(m.title||"Untitled")+'</div><div class="m">'+
-                (m.role||"")+" · "+(m.key||"?")+(m.capo&&m.capo!=="0"?" · capo "+m.capo:"")+"</div>";
-    b.onclick=()=>{state.i=i;state.steps=0;state.capo=parseInt(m.capo||"0",10)||0;closeDrawer();render();};
-    list.appendChild(b);
+    const folder=(m.folder||m.role||"Songs").trim();
+    const hay=((m.title||"")+" "+folder+" "+(m.role||"")+" "+(m.key||"")).toLowerCase();
+    if(q&&!hay.includes(q))return;
+    if(!groups.has(folder))groups.set(folder,[]);
+    groups.get(folder).push({i,m});
+  });
+  if(!groups.size){
+    list.innerHTML='<p class="nores">Nothing matches “'+q.replace(/[<&]/g,"")+'”.</p>';
+    return;
+  }
+  [...groups.keys()].sort((a,b)=>a.localeCompare(b)).forEach(folder=>{
+    const open=q?true:!shut.has(folder);
+    const wrap=document.createElement("div");
+    wrap.className="fold";wrap.dataset.open=open?"1":"0";
+    const head=document.createElement("button");
+    head.className="fold-head";
+    head.innerHTML='<span class="chev">▾</span>'+folder+'<span class="cnt">'+groups.get(folder).length+'</span>';
+    head.onclick=()=>{shut.has(folder)?shut.delete(folder):shut.add(folder);buildList();};
+    const body=document.createElement("div");body.className="fold-body";
+    groups.get(folder).forEach(({i,m})=>{
+      const b=document.createElement("button");
+      b.className="item";
+      b.setAttribute("aria-current",i===state.i?"true":"false");
+      b.innerHTML='<div class="n">'+(m.title||"Untitled")+'</div><div class="m">'+
+                  (m.role||"")+" · "+(m.key||"?")+(m.capo&&m.capo!=="0"?" · capo "+m.capo:"")+"</div>";
+      b.onclick=()=>{openSong(i);};
+      body.appendChild(b);
+    });
+    wrap.appendChild(head);wrap.appendChild(body);list.appendChild(wrap);
   });
 }
+function openSong(i){
+  state.i=i;state.steps=0;state.step=0;
+  state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
+  setPlaying(false);closeDrawer();render();
+}
+
+/* ============================================================
+   Auto-scroll. A frame loop, not a timer: a timer stutters and the
+   scroll rate drifts with the frame rate.
+   ============================================================ */
+let playing=false,rafId=0,lastT=0,speed=1;
+const SPEEDS=[0.5,0.75,1,1.5,2];
+function setPlaying(on){
+  playing=on;
+  document.body.classList.toggle("playing",on);
+  if(on)document.body.dataset.compact="1";   /* settle the header before we move */
+  const btn=document.getElementById("pbPlay");
+  btn.textContent=on?"❙❙ Pause":"▶ Play";
+  btn.classList.toggle("go",!on);
+  if(on){lastT=0;rafId=requestAnimationFrame(tick);}
+  else{if(rafId)cancelAnimationFrame(rafId);rafId=0;
+       const a=document.querySelector(".line.active");if(a)a.classList.remove("active");}
+}
+function tick(t){
+  if(!playing){rafId=0;return;}
+  if(!lastT)lastT=t;
+  const dt=t-lastT;lastT=t;
+  const before=window.scrollY;
+  window.scrollBy(0,dt*speed*0.035);
+  /* stop at the end instead of grinding against the bottom */
+  if(window.scrollY===before&&dt>0&&window.scrollY>0){setPlaying(false);toast("End of song");return;}
+  markLine();
+  rafId=requestAnimationFrame(tick);
+}
+document.getElementById("pbPlay").onclick=()=>setPlaying(!playing);
+document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
+document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
+document.getElementById("pbSpeed").onclick=()=>{
+  speed=SPEEDS[(SPEEDS.indexOf(speed)+1)%SPEEDS.length];
+  document.getElementById("pbSpeed").textContent=speed.toFixed(speed<1?2:1).replace(/0$/,"")+"×";
+  if(!playing)toast("Scroll speed "+speed+"×");
+};
+/* a drag is a correction and should pause; a tap is not a drag */
+let dragY=null;
+addEventListener("touchstart",e=>{dragY=e.touches[0].clientY;},{passive:true});
+addEventListener("touchmove",e=>{
+  if(playing&&dragY!==null&&Math.abs(e.touches[0].clientY-dragY)>14){
+    setPlaying(false);toast("Paused — press play to resume");dragY=null;
+  }
+},{passive:true});
+addEventListener("touchend",()=>{dragY=null;},{passive:true});
+addEventListener("wheel",()=>{if(playing){setPlaying(false);}},{passive:true});
 
 /* ---------- controls ---------- */
 const drawer=document.getElementById("drawer"),scrim=document.getElementById("scrim");
 function openDrawer(){drawer.dataset.open="1";scrim.dataset.open="1";}
 function closeDrawer(){drawer.dataset.open="0";scrim.dataset.open="0";}
 document.getElementById("menu").onclick=openDrawer;
+document.getElementById("find").addEventListener("input",buildList);
 scrim.onclick=closeDrawer;
 
 document.getElementById("up").onclick=()=>{state.steps++;render();};
@@ -761,9 +916,7 @@ document.addEventListener("keydown",e=>{
 function nextSong(d){
   const i=state.i+d;
   if(i<0||i>=SONGS.length)return;
-  state.i=i;state.steps=0;
-  state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
-  render();
+  openSong(i);
 }
 
 /* ============================================================
@@ -1292,26 +1445,55 @@ window.addEventListener("scroll",()=>{
 },{passive:true});
 
 function spy(){
-  document.body.dataset.compact=window.scrollY>36?"1":"0";
-  if(jumping)return;
-  const rm=document.getElementById("roadmap");
+  /* Collapsing the controls changes the sticky header's height, which shifts the
+     page under the reader. Hysteresis stops it flapping at the threshold, and
+     while auto-scroll is running we do not change it at all — a lurch mid-song
+     is worse than a slightly smaller screen. */
+  if(!playing){
+    const y=window.scrollY, on=document.body.dataset.compact==="1";
+    document.body.dataset.compact=(on?y>18:y>64)?"1":"0";
+  }
+  if(jumping){markLine();return;}
   const off=document.querySelector(".stickytop").getBoundingClientRect().height+10;
   let live=null;
   document.querySelectorAll(".sec").forEach(el=>{
     if(el.getBoundingClientRect().top<=off)live=el.dataset.short;
   });
-  let first=null;
-  [...rm.children].forEach(c=>{
-    const hit=c.dataset.short===live;
-    c.dataset.live=hit?"1":"0";
-    if(hit&&!first)first=c;
-  });
-  /* move ONLY the strip sideways — never touch the page's vertical scroll */
-  if(first){
-    const l=first.offsetLeft, r=l+first.offsetWidth;
-    if(l<rm.scrollLeft+12) rm.scrollLeft=l-12;
-    else if(r>rm.scrollLeft+rm.clientWidth-12) rm.scrollLeft=r-rm.clientWidth+12;
+  const steps=mapSteps(currentSong());
+  if(live&&steps.length){
+    /* Scrolling alone cannot say WHICH chorus you are on, so only move when the
+       section under the line stops matching the step we are already on, and then
+       take the nearest step forward that does match. That keeps repeats honest. */
+    if(!steps[state.step]||steps[state.step].short!==live){
+      let found=-1;
+      for(let i=state.step+1;i<steps.length;i++)if(steps[i].short===live){found=i;break;}
+      if(found<0)for(let i=0;i<=state.step&&i<steps.length;i++)if(steps[i].short===live){found=i;break;}
+      if(found>=0)state.step=found;
+    }
   }
+  paintSteps();
+  markLine();
+}
+
+/* the line under the reading position, for auto-scroll */
+let lastMark=0;
+function markLine(force){
+  if(!document.body.classList.contains("playing"))return;
+  /* measuring every line's box on every frame stutters on a phone */
+  const now=performance.now();
+  if(!force&&now-lastMark<120)return;
+  lastMark=now;
+  const y=document.querySelector(".stickytop").getBoundingClientRect().height+
+          (window.innerHeight-document.querySelector(".stickytop").getBoundingClientRect().height)*0.28;
+  let best=null;
+  document.querySelectorAll("#song .line").forEach(el=>{
+    const r=el.getBoundingClientRect();
+    if(r.top<=y&&r.bottom>0)best=el;
+  });
+  const prev=document.querySelector(".line.active");
+  if(prev===best)return;
+  if(prev)prev.classList.remove("active");
+  if(best)best.classList.add("active");
 }
 
 /* ============================================================
@@ -1330,12 +1512,12 @@ const F=id=>document.getElementById(id);
 function loadInto(t){
   const meta={};const body=[];
   t.split("\n").forEach(l=>{
-    const d=l.match(/^\{(title|role|key|capo|tempo|map):\s*(.*)\}\s*$/);
+    const d=l.match(/^\{(title|role|key|capo|tempo|folder|map):\s*(.*)\}\s*$/);
     if(d)meta[d[1]]=d[2].trim();else body.push(l);
   });
   F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";
   F("fKey").value=meta.key||"C";F("fCapo").value=meta.capo||"0";
-  F("fTempo").value=meta.tempo||"";F("fMap").value=meta.map||"";
+  F("fTempo").value=meta.tempo||"";F("fFolder").value=meta.folder||"";F("fMap").value=meta.map||"";
   edText.value=body.join("\n").trim();
   refreshMapChips();
 }
@@ -1343,6 +1525,7 @@ function assemble(){
   const g=id=>F(id).value.trim();
   return "{title: "+g("fTitle")+"}\n{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
     "}\n{capo: "+(g("fCapo")||"0")+"}\n"+(g("fTempo")?"{tempo: "+g("fTempo")+"}\n":"")+
+    (g("fFolder")?"{folder: "+g("fFolder")+"}\n":"")+
     "{map: "+g("fMap")+"}\n"+edText.value.trim();
 }
 document.getElementById("edLoad").onclick=()=>loadInto(SONGS[state.i]);
@@ -1441,7 +1624,7 @@ document.getElementById("edSave").onclick=()=>{
   const at=SONGS.findIndex(s=>(s.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
   if(at>-1){SONGS[at]=t;state.i=at;toast("Updated "+title);}
   else{SONGS.push(t);state.i=SONGS.length-1;toast("Added "+title);}
-  state.steps=0;
+  state.steps=0;state.step=0;
   state.capo=parseInt(parseSong(t).meta.capo||"0",10)||0;
   ed.dataset.open="0";render();
 };
