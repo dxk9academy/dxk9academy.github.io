@@ -101,7 +101,7 @@ main{padding:4px 14px 88vh 14px;max-width:900px;margin:0 auto}
   display:flex;align-items:baseline;gap:8px
 }
 .sec-label .rep{color:var(--cue);letter-spacing:.06em}
-.line{margin:0 0 3px;white-space:pre-wrap}
+.line{margin:0 -6px 3px;padding:2px 6px;border-radius:6px;white-space:pre-wrap}
 .line.chords-row{color:var(--chord);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.9em;letter-spacing:.02em}
 .pair{display:inline-flex;flex-direction:column;vertical-align:top}
 .pair.nolyric{margin-right:.4em}
@@ -263,8 +263,7 @@ body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
 .line.active{
   background:rgba(95,168,160,.22);
   box-shadow:inset 4px 0 var(--section),0 0 0 1px rgba(95,168,160,.45);
-  border-radius:6px;
-  padding:2px 6px;margin-left:-6px;margin-right:-6px
+  border-radius:6px
 }
 .line.active .l{color:#fff}
 .line.active .c{color:#FFD79A}
@@ -518,7 +517,7 @@ function toPairs(text){
    ============================================================ */
 const ALLOW_EDIT = true;
 
-let state={i:0,steps:0,capo:0,fs:17,step:0};
+let state={i:0,steps:0,capo:0,fs:17,step:0,line:-1};
 let jumping=false,jumpTimer=null,keepScroll=false;
 
 function currentSong(){return parseSong(SONGS[state.i]);}
@@ -938,65 +937,121 @@ document.getElementById("setAdd").onclick=()=>{
   addMode=!addMode;buildList();
 };
 function openSong(i){
-  state.i=i;state.steps=0;state.step=0;
+  state.i=i;state.steps=0;state.step=0;state.line=-1;
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
   setPlaying(false);closeDrawer();render();
 }
 
 /* ============================================================
-   Auto-scroll. A frame loop, not a timer: a timer stutters and the
-   scroll rate drifts with the frame rate.
+   PLAY — karaoke, not a conveyor belt.
+   The highlight steps from line to line in time with the singing, and the
+   page moves only when the sung line would drift out of the comfortable
+   reading band. A constant-rate crawl whose highlight is merely whatever
+   sits under a fixed y never lands on the line at the moment you sing it.
    ============================================================ */
-let playing=false,rafId=0,lastT=0,speed=1;
-/* A sung line lasts roughly four seconds and a line is about 40px, so a
-   comfortable read is ~10px per second. 1.0x is that; the rest bracket it. */
-const PX_PER_SEC=10;
-const SPEEDS=[0.4,0.6,0.8,1,1.3,1.7,2.2,3];
+let playing=false,rafId=0,nextAt=0;
+let dwell=3.4;                                   /* seconds for a normal line */
+const DWELLS=[2.0,2.6,3.0,3.4,4.0,4.8,6.0];
+
+function songLines(){return [...document.querySelectorAll("#song .line")];}
+
+/* a long line is sung for longer than a two-word one */
+function lineDwell(el){
+  const bpm=parseFloat(currentSong().meta.tempo||"")||0;
+  const base=bpm>0?(60/bpm)*4:dwell;             /* one 4/4 bar when we know the tempo */
+  if(el&&el.classList.contains("chords-row"))return base;
+  const n=el?el.textContent.trim().length:28;
+  return base*Math.max(0.55,Math.min(1.8,n/28));
+}
+function paintActive(){
+  const prev=document.querySelector(".line.active");
+  const el=songLines()[state.line];
+  if(prev===el)return;
+  if(prev)prev.classList.remove("active");
+  if(el){
+    el.classList.add("active");
+    keepInBand(el);
+    const sec=el.closest(".sec");
+    if(sec)syncStep(sec.dataset.short);
+  }
+}
+/* scroll only when the sung line leaves the band — a page that moves under
+   every single line is harder to read than one that settles */
+function keepInBand(el){
+  const top=document.querySelector(".stickytop").getBoundingClientRect().height;
+  const space=window.innerHeight-top;
+  const r=el.getBoundingClientRect();
+  if(r.top<top+space*0.18||r.bottom>top+space*0.62){
+    jumping=true;
+    window.scrollTo({top:r.top+window.scrollY-(top+space*0.30),behavior:"smooth"});
+    clearTimeout(jumpTimer);
+    jumpTimer=setTimeout(()=>{jumping=false;},600);
+  }
+}
+function lineAt(y){
+  const s=songLines();
+  for(let i=0;i<s.length;i++)if(s[i].getBoundingClientRect().bottom>y)return i;
+  return Math.max(0,s.length-1);
+}
 function setPlaying(on){
   playing=on;
   document.body.classList.toggle("playing",on);
-  if(on)document.body.dataset.compact="1";   /* settle the header before we move */
   const btn=document.getElementById("pbPlay");
-  btn.textContent=on?"❙❙ Pause":"▶ Play";
+  btn.textContent=on?"\u2759\u2759 Pause":"\u25b6 Play";
   btn.classList.toggle("go",!on);
-  if(on){lastT=0;rafId=requestAnimationFrame(tick);}
-  else{if(rafId)cancelAnimationFrame(rafId);rafId=0;
-       const a=document.querySelector(".line.active");if(a)a.classList.remove("active");}
+  if(on){
+    if(state.line<0||state.line>=songLines().length)
+      state.line=lineAt(document.querySelector(".stickytop").getBoundingClientRect().height+10);
+    paintActive();
+    nextAt=performance.now()+lineDwell(songLines()[state.line])*1000;
+    rafId=requestAnimationFrame(tick);
+  }else{
+    if(rafId)cancelAnimationFrame(rafId);
+    rafId=0;
+  }
 }
-/* A worship scroll is slow — around a fifth of a pixel per frame — and
-   scrollBy throws sub-pixel amounts away, so we keep the exact position
-   ourselves and set it absolutely. */
-let scrollPos=0;
 function tick(t){
   if(!playing){rafId=0;return;}
-  if(!lastT){lastT=t;scrollPos=window.scrollY;}
-  const dt=Math.min(t-lastT,100);   /* a backgrounded tab must not lurch */
-  lastT=t;
-  scrollPos+=dt/1000*PX_PER_SEC*speed;
-  const max=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
-  if(scrollPos>=max){window.scrollTo(0,max);markLine(true);setPlaying(false);toast("End of song");return;}
-  window.scrollTo(0,scrollPos);
-  markLine();
+  if(t>=nextAt){
+    if(state.line>=songLines().length-1){setPlaying(false);toast("End of song");return;}
+    state.line++;
+    paintActive();
+    nextAt=t+lineDwell(songLines()[state.line])*1000;
+  }
   rafId=requestAnimationFrame(tick);
 }
 document.getElementById("pbPlay").onclick=()=>setPlaying(!playing);
 document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
 document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
+function showDwell(){document.getElementById("pbSpeed").textContent=dwell.toFixed(1)+"s";}
 document.getElementById("pbSpeed").onclick=()=>{
-  speed=SPEEDS[(SPEEDS.indexOf(speed)+1)%SPEEDS.length];
-  document.getElementById("pbSpeed").textContent=speed.toFixed(speed<1?2:1).replace(/0$/,"")+"×";
-  if(!playing)toast("Scroll speed "+speed+"×");
+  dwell=DWELLS[(DWELLS.indexOf(dwell)+1)%DWELLS.length];
+  showDwell();toast(dwell.toFixed(1)+"s per line");
 };
-/* a drag is a correction and should pause; a tap is not a drag */
+
+/* tap the line you are actually on — the fastest way back in sync */
+songEl.addEventListener("click",e=>{
+  if(document.body.dataset.edit==="1")return;
+  const el=e.target.closest("#song .line");
+  if(!el)return;
+  const i=songLines().indexOf(el);
+  if(i<0)return;
+  state.line=i;
+  document.body.classList.add("playing");   /* so the highlight shows even paused */
+  paintActive();
+  if(playing)nextAt=performance.now()+lineDwell(el)*1000;
+});
+
+/* a drag means "I am reading somewhere else" — stop and let them lead */
 let dragY=null;
 addEventListener("touchstart",e=>{dragY=e.touches[0].clientY;},{passive:true});
 addEventListener("touchmove",e=>{
-  if(playing&&dragY!==null&&Math.abs(e.touches[0].clientY-dragY)>14){
-    setPlaying(false);toast("Paused — press play to resume");dragY=null;
+  if(playing&&!jumping&&dragY!==null&&Math.abs(e.touches[0].clientY-dragY)>14){
+    setPlaying(false);toast("Paused — tap the line you are on");dragY=null;
   }
 },{passive:true});
 addEventListener("touchend",()=>{dragY=null;},{passive:true});
-addEventListener("wheel",()=>{if(playing){setPlaying(false);}},{passive:true});
+addEventListener("wheel",()=>{if(playing&&!jumping)setPlaying(false);},{passive:true});
 
 /* ---------- controls ---------- */
 const drawer=document.getElementById("drawer"),scrim=document.getElementById("scrim");
@@ -1577,47 +1632,27 @@ function spy(){
     const y=window.scrollY, on=document.body.dataset.compact==="1";
     document.body.dataset.compact=(on?y>18:y>64)?"1":"0";
   }
-  if(jumping){markLine();return;}
+  if(jumping)return;
   const off=document.querySelector(".stickytop").getBoundingClientRect().height+10;
   let live=null;
   document.querySelectorAll(".sec").forEach(el=>{
     if(el.getBoundingClientRect().top<=off)live=el.dataset.short;
   });
-  const steps=mapSteps(currentSong());
-  if(live&&steps.length){
-    /* Scrolling alone cannot say WHICH chorus you are on, so only move when the
-       section under the line stops matching the step we are already on, and then
-       take the nearest step forward that does match. That keeps repeats honest. */
-    if(!steps[state.step]||steps[state.step].short!==live){
-      let found=-1;
-      for(let i=state.step+1;i<steps.length;i++)if(steps[i].short===live){found=i;break;}
-      if(found<0)for(let i=0;i<=state.step&&i<steps.length;i++)if(steps[i].short===live){found=i;break;}
-      if(found>=0)state.step=found;
-    }
-  }
+  if(live)syncStep(live);
   paintSteps();
-  markLine();
 }
 
-/* the line under the reading position, for auto-scroll */
-let lastMark=0;
-function markLine(force){
-  if(!document.body.classList.contains("playing"))return;
-  /* measuring every line's box on every frame stutters on a phone */
-  const now=performance.now();
-  if(!force&&now-lastMark<120)return;
-  lastMark=now;
-  const y=document.querySelector(".stickytop").getBoundingClientRect().height+
-          (window.innerHeight-document.querySelector(".stickytop").getBoundingClientRect().height)*0.28;
-  let best=null;
-  document.querySelectorAll("#song .line").forEach(el=>{
-    const r=el.getBoundingClientRect();
-    if(r.top<=y&&r.bottom>0)best=el;
-  });
-  const prev=document.querySelector(".line.active");
-  if(prev===best)return;
-  if(prev)prev.classList.remove("active");
-  if(best)best.classList.add("active");
+/* Scrolling alone cannot say WHICH chorus you are on, so only move when the
+   section stops matching the step we are already on, and then take the nearest
+   step forward that does match. That keeps repeats honest. */
+function syncStep(short){
+  const steps=mapSteps(currentSong());
+  if(!short||!steps.length)return;
+  if(steps[state.step]&&steps[state.step].short===short)return;
+  let found=-1;
+  for(let i=state.step+1;i<steps.length;i++)if(steps[i].short===short){found=i;break;}
+  if(found<0)for(let i=0;i<=state.step&&i<steps.length;i++)if(steps[i].short===short){found=i;break;}
+  if(found>=0){state.step=found;paintSteps();}
 }
 
 /* ============================================================
@@ -1879,6 +1914,7 @@ const canEdit = ALLOW_EDIT || location.hash.toLowerCase().includes("edit");
 if(!canEdit)document.body.dataset.readonly="1";
 
 state.capo=parseInt(parseSong(SONGS[0]).meta.capo||"0",10)||0;
+showDwell();
 render();
 </script>
 </body>

@@ -102,17 +102,29 @@ legitimately contain one.
 With a service open, the set list shows only its songs in its order, and
 next/previous song walks the service instead of the library.
 
-## Auto-scroll
+## Play — karaoke, not a conveyor belt
 
-`setPlaying` / `tick` — a `requestAnimationFrame` loop, not a timer. A worship
-scroll is about 10px per second, which is under a fifth of a pixel per frame,
-and `scrollBy` discards sub-pixel amounts — so `tick` keeps the exact position
-in `scrollPos` and sets it absolutely. `dt` is clamped so a backgrounded tab
-does not lurch on return. While it
-runs the header is frozen compact: collapsing it mid-song changes the sticky
-header's height, which shifts the page and makes the scroll visibly lurch.
-A drag pauses; a tap does not. `main` keeps a large bottom padding so the last
-section can still reach the reading line.
+`setPlaying` / `tick` step `state.line` from one `.line` to the next on a
+`requestAnimationFrame` clock. The highlight lands ON the line at the moment it
+is sung; it is not a side effect of scroll position.
+
+- **Dwell** is `{tempo:}` if the song has one (one 4/4 bar per line), otherwise
+  the `dwell` setting, scaled 0.55–1.8x by line length so a two-word line does
+  not sit as long as a full one. The bottom-right button cycles it and shows
+  the real figure in seconds, which means more to a musician than "1.4x".
+- **The page settles.** `keepInBand` scrolls only when the sung line leaves the
+  18%–62% band, then puts it back at 30%. A page that moves under every line is
+  harder to read than one that holds still.
+- **Tap any line** to make it the current one. That is the fastest way back in
+  sync when the leader repeats a chorus.
+- A drag pauses; a tap does not. `jumping` guards the handlers so the app's own
+  smooth scrolling is not mistaken for the user taking over.
+
+Every `.line` carries the highlight's padding so becoming active never changes
+layout — otherwise each step nudged the rest of the song down by 4px.
+
+An earlier version scrolled at a constant rate and highlighted whatever sat
+under a fixed y. Do not go back to that: it never lands on the sung line.
 
 ## Publishing
 
