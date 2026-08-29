@@ -20,9 +20,12 @@ so musicians scrolled constantly while playing.
 - **No CDN, no npm packages, no external fonts.** The chord parser and
   transposer are hand-written (~120 lines) precisely to avoid dependencies.
   System font stack only.
-- **No localStorage or backend.** Edits are session-only by design; publishing
-  happens by downloading the rebuilt file and uploading it to GitHub. This keeps
-  exactly one master copy.
+- **No backend.** Publishing still happens by downloading the rebuilt file and
+  uploading it to GitHub, which keeps exactly one master copy that everyone sees.
+- **localStorage keeps work on the device it was typed on.** This was originally
+  ruled out; it was reinstated because losing a whole set list on an accidental
+  reload was worse than the duplication it guards against. It is a scratchpad,
+  not sync — see below.
 - **Mobile first.** Musicians read this on phones in low light with their hands
   busy. Test everything at phone width.
 
@@ -149,6 +152,21 @@ layout — otherwise each step nudged the rest of the song down by 4px.
 An earlier version scrolled at a constant rate and highlighted whatever sat
 under a fixed y. Do not go back to that: it never lands on the sung line.
 
+## Keeping work (localStorage)
+
+`saveLocal` writes `{stamp, songs, sets}` under `worshipbook.v1` after every
+change to the book. `loadLocal` restores it before the first `render`.
+
+The `stamp` is a hash of the **published** `SONGS` baked into the file. When it
+no longer matches, the owner has republished: the published version wins, the
+older local data is moved to `worshipbook.v1.superseded`, and the user is told.
+The master copy has to win, or a device that edited once would never see an
+update again.
+
+This is per-device only. Nothing here reaches another person or another phone —
+the drawer footer says so, and offers **Discard my changes**. Real sharing needs
+a backend; GitHub Pages serves static files and cannot accept writes.
+
 ## Publishing
 
 1. User edits in the app, presses **Download file** → gets `index.html`
@@ -186,6 +204,8 @@ actually publish a change that others see.
 - No offline caching yet (deliberately parked).
 - `Joy` has a duplicated Verse 2 inherited from the source file — flagged with
   a `{cue:}`, still needs the real words.
+- Edits are kept per-device, not shared. Shared editing across the team needs a
+  backend, and with it a way to stop any link-holder overwriting the book.
 
 ## Testing
 

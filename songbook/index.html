@@ -140,6 +140,11 @@ body[data-view="lyrics"] .line.chords-row{display:none}
 .item .n{font-weight:600;font-size:.95em}
 .item .m{font-size:.72em;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
 .drawer footer{padding:12px 16px;border-top:1px solid var(--line);font-size:.72em;color:var(--muted);line-height:1.5}
+.drawer footer b{color:var(--text)}
+.linkbtn{
+  display:inline;padding:0;margin-top:6px;background:none;border:0;
+  color:var(--cue);font-size:1em;font-weight:700;text-decoration:underline
+}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -166,6 +171,7 @@ body[data-view="lyrics"] .line.chords-row{display:none}
   padding:7px 11px;font-size:.78em;font-weight:600;color:var(--text);white-space:nowrap
 }
 .btn.go{background:var(--chord);color:#101010;border-color:var(--chord)}
+.btn.danger{border-color:var(--cue);color:var(--cue);margin-left:auto}
 .btn:active{opacity:.7}
 .ed-hint{padding:8px 12px;font-size:.74em;color:var(--muted);line-height:1.5;border-bottom:1px solid var(--line)}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
@@ -340,6 +346,7 @@ body[data-setmode="set"] .addsongs{display:block}
     <button class="btn" id="edLoad">Load current</button>
     <button class="btn go" id="edSave">Save to book</button>
     <button class="btn go" id="edDownload">Download file</button>
+    <button class="btn danger" id="edDelete">Delete song</button>
   </div>
   <div class="fields">
     <label class="wide">Song title<input id="fTitle" placeholder="Never Once"></label>
@@ -758,6 +765,7 @@ function writeChord(chord){
   }
   line.text=pairsToText(pairs);
   SONGS[state.i]=serialize(song);
+  saveLocal();
   keepScroll=window.scrollY;
   closePicker();render();
 }
@@ -911,7 +919,7 @@ function buildList(){
         const at=arr.indexOf(t);
         if(addMode){ at<0?arr.push(t):arr.splice(at,1); }
         else if(at>=0){ arr.splice(at,1); }
-        buildList();return;
+        saveLocal();buildList();return;
       }
       openSong(i);
     };
@@ -925,7 +933,7 @@ document.getElementById("setNew").onclick=()=>{
   const name=(prompt("Name this service — a date works well, e.g. Sunday 7 Sept")||"").trim();
   if(!name)return;
   SETS.push({name,songs:[]});
-  activeSet=SETS.length-1;addMode=true;buildList();
+  activeSet=SETS.length-1;addMode=true;saveLocal();buildList();
   toast("Service created — now pick its songs");
 };
 document.getElementById("setEdit").onclick=()=>{
@@ -935,11 +943,11 @@ document.getElementById("setEdit").onclick=()=>{
   if(name===null)return;
   if(!name.trim()){
     if(confirm('Delete the service "'+cur.name+'"? The songs stay in the library.')){
-      SETS.splice(activeSet,1);activeSet=-1;addMode=false;buildList();toast("Service deleted");
+      SETS.splice(activeSet,1);activeSet=-1;addMode=false;saveLocal();buildList();toast("Service deleted");
     }
     return;
   }
-  cur.name=name.trim();buildList();toast("Renamed");
+  cur.name=name.trim();saveLocal();buildList();toast("Renamed");
 };
 document.getElementById("setAdd").onclick=()=>{
   if(activeSet<0)return;
@@ -1701,6 +1709,60 @@ It is [E]right to give Him [A]thanks and praise
 /* Services (set lists). One line, rewritten wholesale on download. */
 let SETS=[];
 
+/* ============================================================
+   KEEPING WORK — this device only.
+   Everything typed here is kept in the browser so closing the tab or
+   reloading no longer throws it away. It does NOT travel to anyone else:
+   other people, and your own other devices, still see the published file
+   until it is downloaded and uploaded to GitHub.
+   ============================================================ */
+const STORE="worshipbook.v1";
+const BASE_SONGS=SONGS.slice();
+const BASE_STAMP=(()=>{                     /* what the published file contains */
+  let h=5381; const t=BASE_SONGS.join("\u0000");
+  for(let i=0;i<t.length;i++)h=((h*33)^t.charCodeAt(i))>>>0;
+  return h.toString(36)+"."+BASE_SONGS.length;
+})();
+let localDirty=false, bootNote="";
+
+function saveLocal(){
+  try{
+    localStorage.setItem(STORE,JSON.stringify({stamp:BASE_STAMP,songs:SONGS,sets:SETS,at:Date.now()}));
+    localDirty=true;
+    paintDirty();
+  }catch(e){ /* private browsing, or storage full — carry on unsaved */ }
+}
+function loadLocal(){
+  let raw=null;
+  try{ raw=localStorage.getItem(STORE); }catch(e){ return; }
+  if(!raw)return;
+  let d; try{ d=JSON.parse(raw); }catch(e){ return; }
+  /* The published file wins when it changes: the master copy is the point of
+     the whole thing. Keep the older work aside rather than dropping it. */
+  if(d.stamp!==BASE_STAMP){
+    try{ localStorage.setItem(STORE+".superseded",raw); localStorage.removeItem(STORE); }catch(e){}
+    bootNote="The book was republished — your earlier changes on this device were set aside.";
+    return;
+  }
+  if(Array.isArray(d.songs)&&d.songs.length){SONGS.length=0;d.songs.forEach(x=>SONGS.push(x));}
+  if(Array.isArray(d.sets))SETS=d.sets;
+  localDirty=true;
+}
+function clearLocal(){
+  if(!confirm("Throw away every change made on this device and go back to the published book?\n\nAnything not downloaded and published will be lost."))return;
+  try{ localStorage.removeItem(STORE); }catch(e){}
+  location.reload();
+}
+function paintDirty(){
+  const f=document.querySelector(".drawer footer");
+  if(!f)return;
+  f.innerHTML=localDirty
+    ? 'Saved on this device. <b>Other people still see the published book</b> — press Download file and send it on to publish. <button class="linkbtn" id="resetLocal">Discard my changes</button>'
+    : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.';
+  const r=document.getElementById("resetLocal");
+  if(r)r.onclick=clearLocal;
+}
+
 /* ---------- keep the map honest while you scroll ---------- */
 let ticking=false;
 window.addEventListener("scroll",()=>{
@@ -1871,6 +1933,29 @@ edText.addEventListener("paste",e=>{
   toast("Converted — check the order below");
 });
 
+document.getElementById("edDelete").onclick=()=>{
+  const title=(F("fTitle").value||"").trim()||parseSong(SONGS[state.i]).meta.title||"this song";
+  const at=SONGS.findIndex(x=>(x.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
+  if(at<0){toast("That song is not in the book yet");return;}
+  const inSets=SETS.filter(st=>st.songs.includes(title)).map(st=>st.name);
+  /* say exactly what is about to go, and where else it is used */
+  const warn='Delete "'+title+'" from the book?\n\n'+
+    (inSets.length?'It is also in: '+inSets.join(', ')+'.\n\n':'')+
+    'This cannot be undone here. It only becomes permanent for everyone once the file is downloaded and published.';
+  if(!confirm(warn))return;
+  SONGS.splice(at,1);
+  SETS.forEach(st=>{const i=st.songs.indexOf(title);if(i>=0)st.songs.splice(i,1);});
+  if(!SONGS.length){SONGS.push("{title: New song}\n{key: C}\n{capo: 0}\n{map: V1}\n{section: Verse 1}\n");}
+  state.i=Math.max(0,Math.min(SONGS.length-1,state.i>at?state.i-1:state.i));
+  state.steps=0;state.step=0;state.pos=-1;
+  state.capo=parseInt(parseSong(SONGS[state.i]).meta.capo||"0",10)||0;
+  setPlaying(false);
+  ed.dataset.open="0";
+  saveLocal();
+  render();
+  toast("Deleted "+title);
+};
+
 document.getElementById("edSave").onclick=()=>{
   const t=assemble();
   const title=F("fTitle").value.trim();
@@ -1878,6 +1963,7 @@ document.getElementById("edSave").onclick=()=>{
   const at=SONGS.findIndex(s=>(s.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
   if(at>-1){SONGS[at]=t;state.i=at;toast("Updated "+title);}
   else{SONGS.push(t);state.i=SONGS.length-1;toast("Added "+title);}
+  saveLocal();
   const into=parseInt(F("fSet").value,10);
   if(into>=0&&SETS[into]&&!SETS[into].songs.includes(title)){
     SETS[into].songs.push(title);
@@ -1998,9 +2084,12 @@ edText.addEventListener("input",()=>{
 const canEdit = ALLOW_EDIT || location.hash.toLowerCase().includes("edit");
 if(!canEdit)document.body.dataset.readonly="1";
 
+loadLocal();
 state.capo=parseInt(parseSong(SONGS[0]).meta.capo||"0",10)||0;
 showDwell();
 render();
+paintDirty();
+if(bootNote)setTimeout(()=>toast(bootNote),600);
 </script>
 </body>
 </html>
