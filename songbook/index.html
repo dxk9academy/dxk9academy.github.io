@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Songbook</title>
+<title>Worship Book</title>
 <meta name="theme-color" content="#0E1420">
 <style>
 :root{
@@ -520,7 +520,7 @@ function toPairs(text){
    ============================================================ */
 const ALLOW_EDIT = true;
 
-let state={i:0,steps:0,capo:0,fs:17,step:0,line:-1};
+let state={i:0,steps:0,capo:0,fs:17,step:0,pos:-1};
 let jumping=false,jumpTimer=null,keepScroll=false;
 
 function currentSong(){return parseSong(SONGS[state.i]);}
@@ -556,11 +556,8 @@ function goStep(i){
   paintSteps();
   /* Jumping to a section must move the SINGING there too. Scrolling alone left
      the sung line where it was, and keepInBand promptly dragged the page back. */
-  const sec=sectionForStep(state.step);
-  if(sec){
-    const first=songLines().indexOf(sec.querySelector(".line"));
-    if(first>=0){state.line=first;paintActive();return;}
-  }
+  const at=PLAY.findIndex(x=>x.step===state.step);
+  if(at>=0){state.pos=at;paintActive();return;}
   scrollToStep(state.step,true);
 }
 /* highlight exactly ONE chip: the current step */
@@ -660,6 +657,7 @@ function render(){
     const y=keepScroll;keepScroll=false;
     requestAnimationFrame(()=>window.scrollTo(0,y));
   }else window.scrollTo(0,0);
+  PLAY=buildPlay();paintedPos=-1;
   paintSteps();
   buildList();
 }
@@ -948,7 +946,7 @@ document.getElementById("setAdd").onclick=()=>{
   addMode=!addMode;buildList();
 };
 function openSong(i){
-  state.i=i;state.steps=0;state.step=0;state.line=-1;
+  state.i=i;state.steps=0;state.step=0;state.pos=-1;
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
   setPlaying(false);closeDrawer();render();
 }
@@ -965,6 +963,37 @@ let dwell=3.4;                                   /* seconds for a normal line */
 const DWELLS=[2.0,2.6,3.0,3.4,4.0,4.8,6.0];
 
 function songLines(){return [...document.querySelectorAll("#song .line")];}
+
+/* The page shows each section once; the arrangement decides what is actually
+   sung, and how often. PLAY is that running order flattened — one entry per
+   line per pass — so a chorus played three times is three runs through the
+   same lines, and a bridge marked x2 really is sung twice. Walking the page
+   top to bottom instead (which is what this used to do) plays every section
+   once, in the order they happen to be written. */
+let PLAY=[];
+function buildPlay(){
+  const steps=mapSteps(currentSong());
+  const out=[];
+  if(!steps.length){                       /* no arrangement written — read it straight through */
+    songLines().forEach(el=>out.push({el,step:-1,pass:0}));
+    return out;
+  }
+  steps.forEach((st,si)=>{
+    const sec=[...document.querySelectorAll(".sec")].find(e=>e.dataset.short===st.short);
+    if(!sec)return;
+    const lines=[...sec.querySelectorAll(".line")];
+    if(!lines.length)return;
+    const reps=Math.max(1,parseInt(st.rep||"1",10)||1);
+    for(let r=0;r<reps;r++)lines.forEach(el=>out.push({el,step:si,pass:r}));
+  });
+  return out.length?out:songLines().map(el=>({el,step:-1,pass:0}));
+}
+/* where in the running order does this line come next? */
+function posOfLine(el,from){
+  for(let i=Math.max(0,from);i<PLAY.length;i++)if(PLAY[i].el===el)return i;
+  for(let i=0;i<PLAY.length;i++)if(PLAY[i].el===el)return i;
+  return -1;
+}
 
 /* a long line is sung for longer than a two-word one */
 function lineDwell(el){
@@ -1000,10 +1029,16 @@ function markWords(frac){
   sungCount=n;
   for(let i=0;i<words.length;i++)words[i].classList.toggle("sung",i<n);
 }
+let paintedPos=-1;
 function paintActive(){
   const prev=document.querySelector(".line.active");
-  const el=songLines()[state.line];
-  if(prev===el)return;
+  const item=PLAY[state.pos];
+  const el=item&&item.el;
+  /* Keyed on the position in the running order, not the element: a one-line
+     section played twice lands on the same element twice and must still restart
+     its timing and its word fill. */
+  if(paintedPos===state.pos&&prev)return;
+  paintedPos=state.pos;
   if(prev){prev.classList.remove("active");
     prev.querySelectorAll(".wd.sung").forEach(w=>w.classList.remove("sung"));}
   if(el){
@@ -1016,8 +1051,10 @@ function paintActive(){
     nextAt=lineStart+lineMs;
     markWords(0);
     keepInBand(el);
-    const sec=el.closest(".sec");
-    if(sec)syncStep(sec.dataset.short);
+    /* the chip follows the running order, so the third chorus lights the third
+       chorus chip and not the first */
+    if(item.step>=0&&item.step!==state.step){state.step=item.step;paintSteps();}
+    else if(item.step<0){const sec=el.closest(".sec");if(sec)syncStep(sec.dataset.short);}
   }
 }
 /* scroll only when the sung line leaves the band — a page that moves under
@@ -1048,8 +1085,8 @@ function setPlaying(on){
     /* Press play and the song starts at its first line. Starting from whatever
        was under the header meant scrolling to read ahead silently moved the
        starting point. To begin elsewhere, tap that line first. */
-    if(state.line<0||state.line>=songLines().length){
-      state.line=0;
+    if(state.pos<0||state.pos>=PLAY.length){
+      state.pos=0;
       window.scrollTo({top:0,behavior:"auto"});
     }
     paintActive();
@@ -1063,8 +1100,8 @@ function tick(t){
   if(!playing){rafId=0;return;}
   if(lineMs>0)markWords((t-lineStart)/lineMs);
   if(t>=nextAt){
-    if(state.line>=songLines().length-1){setPlaying(false);toast("End of song");return;}
-    state.line++;
+    if(state.pos>=PLAY.length-1){setPlaying(false);toast("End of song");return;}
+    state.pos++;
     paintActive();          /* sets lineStart, lineMs and nextAt for the new line */
   }
   rafId=requestAnimationFrame(tick);
@@ -1083,9 +1120,9 @@ songEl.addEventListener("click",e=>{
   if(document.body.dataset.edit==="1")return;
   const el=e.target.closest("#song .line");
   if(!el)return;
-  const i=songLines().indexOf(el);
+  const i=posOfLine(el,state.pos);
   if(i<0)return;
-  state.line=i;
+  state.pos=i;
   document.body.classList.add("playing");   /* so the highlight shows even paused */
   paintActive();
 });

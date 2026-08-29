@@ -1,4 +1,4 @@
-# Church Songbook
+# Worship Book
 
 A chord chart reader for a worship team. One self-contained HTML file, no
 dependencies, no build step, no backend. Served as a static page on GitHub Pages.
@@ -104,9 +104,21 @@ next/previous song walks the service instead of the library.
 
 ## Play — karaoke, not a conveyor belt
 
-`setPlaying` / `tick` step `state.line` from one `.line` to the next on a
+`setPlaying` / `tick` walk `state.pos` through **`PLAY`** — the arrangement
+flattened into a running order, one entry per line per pass — on a
 `requestAnimationFrame` clock. The highlight lands ON the line at the moment it
 is sung; it is not a side effect of scroll position.
+
+**`PLAY` is the whole point.** The page shows each section once; `{map:}` says
+what is actually sung and how often, so `buildPlay` expands it: `V1 - C - Br x3
+- C` becomes v1, c, br, br, br, c. Play used to walk `#song .line` in document
+order, which sang every section exactly once in the order they happened to be
+written — repeats and arrangement order were ignored entirely. Never go back to
+document order. A song with no `{map:}` falls back to it, and only then.
+
+`paintActive` is keyed on `state.pos`, not on the element: a one-line section
+played three times lands on the same element three times and must still restart
+its timing and word fill each pass.
 
 - **Dwell** is `{tempo:}` if the song has one (one 4/4 bar per line), otherwise
   the `dwell` setting, scaled 0.55–1.8x by line length so a two-word line does
