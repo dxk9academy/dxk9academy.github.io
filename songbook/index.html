@@ -553,7 +553,15 @@ function goStep(i){
   const steps=mapSteps(currentSong());
   if(!steps.length)return;
   state.step=Math.max(0,Math.min(steps.length-1,i));
-  paintSteps(); scrollToStep(state.step,true);
+  paintSteps();
+  /* Jumping to a section must move the SINGING there too. Scrolling alone left
+     the sung line where it was, and keepInBand promptly dragged the page back. */
+  const sec=sectionForStep(state.step);
+  if(sec){
+    const first=songLines().indexOf(sec.querySelector(".line"));
+    if(first>=0){state.line=first;paintActive();return;}
+  }
+  scrollToStep(state.step,true);
 }
 /* highlight exactly ONE chip: the current step */
 function paintSteps(){

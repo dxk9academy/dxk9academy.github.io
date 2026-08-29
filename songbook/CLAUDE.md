@@ -123,6 +123,9 @@ is sung; it is not a side effect of scroll position.
 - **Play starts at the song's first line**, and scrolls there. It used to start
   at whatever sat under the header, which meant scrolling to read ahead quietly
   moved the starting point. To begin elsewhere, tap that line first.
+- **Jumping moves the singing.** `goStep` sets `state.line` to the first line of
+  that step's section, not just the scroll position. Scrolling alone left the
+  sung line where it was and `keepInBand` dragged the page straight back.
 - **Tap any line** to make it the current one. That is the fastest way back in
   sync when the leader repeats a chorus.
 - A drag pauses; a tap does not. `jumping` guards the handlers so the app's own
