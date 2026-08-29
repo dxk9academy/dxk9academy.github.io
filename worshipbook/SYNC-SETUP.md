@@ -73,7 +73,7 @@ take. You do not need to repeat them.
 
 ## 4. Point the app at it
 
-In `songbook/index.html`, find near the top of the script:
+In `worshipbook/index.html`, find near the top of the script:
 
 ```js
 const SYNC_URL = "";

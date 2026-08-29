@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worship Book</title>
+<meta name="theme-color" content="#0E1420">
+<style>
+:root{
+  --ink:#0E1420;
+  --panel:#161E2D;
+  --panel-2:#1E2839;
+  --line:#2B3648;
+  --text:#EDE7DC;
+  --muted:#8A96AA;
+  --chord:#F2B23E;
+  --section:#5FA8A0;
+  --cue:#E06A5B;
+  --fs:17px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--ink);color:var(--text)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:var(--fs);
+  line-height:1.45;
+  padding-bottom:env(safe-area-inset-bottom);
+  overscroll-behavior-y:contain;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* ---------- top bar ---------- */
+.stickytop{
+  position:sticky;top:0;z-index:40;background:var(--ink);
+  box-shadow:0 10px 18px -10px rgba(0,0,0,.85);
+}
+.bar{
+  background:var(--ink);
+  padding:10px 12px 10px 12px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+}
+.bar-row{display:flex;align-items:center;gap:10px}
+.menu-btn{
+  width:38px;height:38px;flex:0 0 38px;border:1px solid var(--line);border-radius:9px;
+  display:grid;place-items:center;background:var(--panel)
+}
+.menu-btn span{display:block;width:16px;height:2px;background:var(--text);box-shadow:0 -5px 0 var(--text),0 5px 0 var(--text)}
+.title-wrap{min-width:0;flex:1}
+.song-title{
+  font-size:1.05em;font-weight:700;letter-spacing:.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0
+}
+.song-meta{font-size:.72em;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+.song-meta b{color:var(--section);font-weight:600}
+
+/* ---------- controls ---------- */
+.ctrls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.pill{
+  border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  padding:6px 10px;font-size:.78em;color:var(--muted);
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap
+}
+.pill b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;min-width:1.6em;text-align:center}
+.pill button{
+  width:24px;height:24px;border-radius:6px;background:var(--panel-2);
+  display:grid;place-items:center;font-size:15px;line-height:1;color:var(--text)
+}
+.pill button:active{background:var(--chord);color:#000}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg button{padding:6px 12px;font-size:.78em;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--chord);color:#101010;font-weight:700}
+
+/* ---------- signature: roadmap strip ---------- */
+.roadmap{
+  display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
+  padding:9px 12px;background:var(--ink);
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+/* once you start playing, the controls fold away and only the map stays */
+.ctrls{transition:max-height .18s ease,opacity .18s ease;max-height:140px;overflow:hidden}
+body[data-compact="1"] .ctrls{max-height:0;opacity:0;margin-top:0}
+body[data-compact="1"] .song-meta{display:none}
+.roadmap::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;border:1px solid var(--line);border-radius:7px;
+  padding:6px 10px;font-size:.74em;font-weight:700;letter-spacing:.06em;
+  color:var(--muted);background:var(--panel);position:relative
+}
+.chip[data-live="1"]{border-color:var(--chord);color:var(--chord)}
+.chip .rep{color:var(--cue);margin-left:4px}
+
+/* ---------- song body ---------- */
+/* enough tail room that the LAST section can still scroll up to the reading
+   line — the play bar took some of what the old 60vh allowed for */
+main{padding:4px 14px 88vh 14px;max-width:900px;margin:0 auto}
+.sec{margin:18px 0 0}
+.sec-label{
+  font-size:.72em;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--section);font-weight:700;margin-bottom:5px;
+  display:flex;align-items:baseline;gap:8px
+}
+.sec-label .rep{color:var(--cue);letter-spacing:.06em}
+.line{margin:0 -6px 3px;padding:2px 6px;border-radius:6px;white-space:pre-wrap}
+.line.chords-row{color:var(--chord);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.9em;letter-spacing:.02em}
+.pair{display:inline-flex;flex-direction:column;vertical-align:top}
+.pair.nolyric{margin-right:.4em}
+.pair .c{
+  color:var(--chord);font-weight:700;font-size:.82em;line-height:1.25;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  white-space:pre;min-height:1.25em
+}
+.pair .l{white-space:pre}
+.cue{color:var(--cue);font-size:.85em;font-style:italic;margin:6px 0}
+
+/* chords-only mode */
+body[data-view="chords"] .pair .l{display:none}
+body[data-view="chords"] .pair{margin-right:.55em}
+body[data-view="chords"] .sec{margin-top:14px}
+body[data-view="lyrics"] .pair .c{display:none}
+body[data-view="lyrics"] .line.chords-row{display:none}
+
+/* ---------- setlist drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim[data-open="1"]{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;width:min(84vw,340px);z-index:50;
+  background:var(--panel);border-right:1px solid var(--line);
+  transform:translateX(-101%);transition:transform .2s ease;
+  display:flex;flex-direction:column
+}
+.drawer[data-open="1"]{transform:none}
+.drawer h2{
+  margin:0;padding:calc(16px + env(safe-area-inset-top)) 16px 12px;
+  font-size:.75em;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700
+}
+.list{overflow-y:auto;flex:1;padding-bottom:24px}
+.item{display:block;width:100%;text-align:left;padding:11px 16px;border-bottom:1px solid var(--line)}
+.item[aria-current="true"]{background:var(--panel-2);box-shadow:inset 3px 0 0 var(--chord)}
+.item .n{font-weight:600;font-size:.95em}
+.item .m{font-size:.72em;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+.drawer footer{padding:12px 16px;border-top:1px solid var(--line);font-size:.72em;color:var(--muted);line-height:1.5}
+.drawer footer b{color:var(--text)}
+.linkbtn{
+  display:inline;padding:0;margin-top:6px;background:none;border:0;
+  color:var(--cue);font-size:1em;font-weight:700;text-decoration:underline
+}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- editor ---------- */
+.edit-open{
+  display:block;width:100%;text-align:left;padding:12px 16px;
+  color:var(--chord);font-weight:600;font-size:.9em;border-top:1px solid var(--line)
+}
+.editor{
+  position:fixed;inset:0;z-index:60;background:var(--ink);display:none;
+  flex-direction:column;padding-top:env(safe-area-inset-top);
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch
+}
+/* the top bar must stay reachable once the panel scrolls */
+.editor>.ed-bar:first-child{position:sticky;top:0;z-index:2;background:var(--ink)}
+.editor[data-open="1"]{display:flex}
+.ed-bar{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap
+}
+.ed-bar h2{margin:0;font-size:.8em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);flex:1}
+.btn{
+  border:1px solid var(--line);background:var(--panel);border-radius:8px;
+  padding:7px 11px;font-size:.78em;font-weight:600;color:var(--text);white-space:nowrap
+}
+.btn.go{background:var(--chord);color:#101010;border-color:var(--chord)}
+.btn.danger{border-color:var(--cue);color:var(--cue);margin-left:auto}
+.btn:active{opacity:.7}
+.ed-hint{padding:8px 12px;font-size:.74em;color:var(--muted);line-height:1.5;border-bottom:1px solid var(--line)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
+.fields label{display:flex;flex-direction:column;gap:4px;font-size:.68em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fields .wide{grid-column:1 / -1}
+.fields input{
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  color:var(--text);font:inherit;font-size:15px;padding:9px 10px;outline:none
+}
+.fields input:focus{border-color:var(--chord)}
+.ed-body-label{padding:10px 12px 0;font-size:.68em;letter-spacing:.12em;text-transform:uppercase;color:var(--section);font-weight:700}
+.mapbuild{padding:0 12px 12px;border-bottom:1px solid var(--line)}
+.mapbuild .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.mchip{
+  border:1px solid var(--section);border-radius:7px;background:var(--panel);
+  color:var(--section);font-size:.76em;font-weight:700;padding:7px 11px
+}
+.mchip:active{background:var(--section);color:#101010}
+.mapbuild .mini{border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:.76em;font-weight:700;padding:7px 11px}
+.mapbuild .none{font-size:.74em;color:var(--muted)}
+.ochip{
+  border:1px solid var(--chord);border-radius:7px;background:var(--panel);
+  color:var(--chord);font-size:.76em;font-weight:700;padding:7px 10px
+}
+.ochip[data-sel="1"]{background:var(--chord);color:#101010}
+.mapbuild .lbl{font-size:.66em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:2px 0 6px}
+
+/* ---------- edit chords on the chart ---------- */
+.edit-toggle{
+  width:38px;height:38px;flex:0 0 38px;border:1px solid var(--line);border-radius:9px;
+  display:grid;place-items:center;background:var(--panel);font-size:16px
+}
+.edit-toggle[aria-pressed="true"]{background:var(--chord);color:#101010;border-color:var(--chord)}
+body[data-edit="1"] .pair .c{
+  border-bottom:1px dashed var(--chord);min-width:1.4em;text-align:center;cursor:pointer
+}
+body[data-edit="1"] .pair .c:empty::after{content:"+";color:var(--muted)}
+body[data-edit="1"] .w{border-bottom:1px dotted var(--line);cursor:pointer}
+body[data-edit="1"] .w:active{background:var(--panel-2)}
+.edit-note{
+  background:var(--panel-2);border:1px solid var(--chord);border-radius:9px;
+  padding:9px 12px;margin:10px 0 0;font-size:.8em;color:var(--text);display:none
+}
+body[data-edit="1"] .edit-note{display:block}
+
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:65;background:var(--panel);
+  border-top:1px solid var(--chord);border-radius:14px 14px 0 0;
+  padding:14px 14px calc(16px + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .2s ease;
+  max-height:76vh;overflow-y:auto;overscroll-behavior:contain;
+  box-shadow:0 -14px 30px -12px rgba(0,0,0,.8)
+}
+body[data-edit="1"] main{padding-bottom:70vh}
+.pair,.w,.c{touch-action:manipulation}
+body[data-readonly="1"] #editToggle,
+body[data-readonly="1"] #songEdit,
+body[data-readonly="1"] #openEdit,
+body[data-readonly="1"] #setNew,
+body[data-readonly="1"] #setEdit,
+body[data-readonly="1"] .addsongs{display:none}
+.signin{
+  width:100%;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+  color:var(--text);font-size:.78em;font-weight:700;padding:10px;margin-top:10px
+}
+.signin.on{border-color:var(--section);color:var(--section)}
+.syncdot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);
+  margin-right:6px;vertical-align:middle
+}
+.syncdot[data-s="ok"]{background:var(--section)}
+.syncdot[data-s="off"]{background:var(--muted)}
+.syncdot[data-s="bad"]{background:var(--cue)}
+.sheet[data-open="1"]{transform:none}
+.sheet h3.sub{margin-top:12px}
+.sheet h3{margin:0 0 10px;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sheet .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.sheet .row.act{position:sticky;bottom:0;margin-bottom:0;padding:9px 0 2px;background:var(--panel);border-top:1px solid var(--line)}
+.k{
+  border:1px solid var(--line);background:var(--panel-2);border-radius:8px;
+  padding:9px 12px;font-size:.88em;font-weight:700;color:var(--text);min-width:40px
+}
+.k[data-sel="1"]{background:var(--chord);color:#101010;border-color:var(--chord)}
+.sheet .preview{
+  font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--chord);
+  font-weight:700;font-size:1.2em;margin:2px 0 10px
+}
+.editor textarea{
+  flex:1;width:100%;border:none;outline:none;resize:none;
+  background:var(--ink);color:var(--text);
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:14px;line-height:1.5;padding:12px;
+  -webkit-text-size-adjust:100%;
+  min-height:45vh
+}
+.playbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:6px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(14,20,32,.94);border-top:1px solid var(--line);
+  backdrop-filter:blur(12px)
+}
+.pb{
+  flex:1;min-height:46px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);font-size:.82em;font-weight:700;color:var(--text)
+}
+.pb.go{background:var(--chord);color:#101010;border-color:var(--chord)}
+.pb:active{opacity:.75}
+body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
+/* the line being sung — must read from arm's length in a dim room */
+.line.active{
+  background:rgba(95,168,160,.22);
+  box-shadow:inset 4px 0 var(--section),0 0 0 1px rgba(95,168,160,.45);
+  border-radius:6px
+}
+.line.active .c{color:#FFD79A}
+/* karaoke fill: the words already sung are bright, the rest stay readable */
+.line.active .l{color:#EDE7DC}
+.line.active .wd{opacity:.5;transition:opacity .1s linear,color .1s linear}
+.line.active .wd.sung{opacity:1;color:#FFF6E2}
+.setbar{display:flex;gap:6px;margin-bottom:8px}
+.setbar select{
+  flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--text);font:inherit;font-size:15px;padding:10px 9px;outline:none
+}
+.mini2{
+  width:42px;border:1px solid var(--line);border-radius:9px;background:var(--panel);
+  color:var(--text);font-size:15px;font-weight:700
+}
+.addsongs{
+  width:100%;border:1px dashed var(--section);border-radius:9px;background:none;
+  color:var(--section);font-size:.78em;font-weight:700;padding:9px;margin-bottom:9px;display:none
+}
+body[data-setmode="set"] .addsongs{display:block}
+.addsongs[data-on="1"]{border-style:solid;background:var(--section);color:#101010}
+.item .pick{
+  float:right;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);
+  color:var(--text);font-size:.9em;font-weight:700;width:30px;height:30px;margin-left:8px
+}
+.find{
+  width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--text);font:inherit;font-size:15px;padding:10px 11px;outline:none;margin-bottom:10px
+}
+.find:focus{border-color:var(--chord)}
+.fold{margin:2px 0 8px}
+.fold-head{
+  width:100%;display:flex;align-items:center;gap:8px;padding:8px 4px;text-align:left;
+  font-size:.68em;letter-spacing:.13em;text-transform:uppercase;color:var(--chord);font-weight:700
+}
+.fold-head .cnt{margin-left:auto;color:var(--muted);letter-spacing:.06em}
+.fold-head .chev{transition:transform .16s}
+.fold[data-open="0"] .chev{transform:rotate(-90deg)}
+.fold[data-open="0"] .fold-body{display:none}
+.nores{font-size:.8em;color:var(--muted);padding:10px 4px}
+.toast{
+  position:fixed;left:50%;bottom:86px;transform:translateX(-50%);
+  background:var(--chord);color:#101010;font-weight:700;font-size:.82em;
+  padding:9px 16px;border-radius:999px;z-index:70;opacity:0;pointer-events:none;
+  transition:opacity .2s
+}
+.toast[data-show="1"]{opacity:1}
+</style>
+</head>
+<body data-view="full">
+
+<div class="scrim" id="scrim"></div>
+<nav class="drawer" id="drawer" aria-label="Set list">
+  <h2>Set list</h2>
+  <div class="setbar">
+    <select id="setPick" aria-label="Choose a service"></select>
+    <button class="mini2" id="setNew" title="New service">＋</button>
+    <button class="mini2" id="setEdit" title="Rename or delete this service">⋯</button>
+  </div>
+  <button class="addsongs" id="setAdd">＋ Add songs to this service</button>
+  <input class="find" id="find" placeholder="Search songs" aria-label="Search songs">
+  <div class="list" id="list"></div>
+  <button class="edit-open" id="openEdit">＋ Add or edit a song</button>
+  <button class="signin" id="signBtn">Sign in as admin</button>
+  <footer>Edits live on your phone until you download the file and upload it to GitHub. That upload is what everyone else sees.</footer>
+</nav>
+
+<div class="editor" id="editor">
+  <div class="ed-bar">
+    <h2>Song editor</h2>
+    <button class="btn" id="edClose">Close</button>
+  </div>
+  <div class="ed-bar">
+    <button class="btn" id="edTemplate">Start blank</button>
+    <button class="btn" id="edLoad">Load current</button>
+    <button class="btn go" id="edSave">Save to book</button>
+    <button class="btn go" id="edDownload">Download file</button>
+    <button class="btn danger" id="edDelete">Delete song</button>
+  </div>
+  <div class="fields">
+    <label class="wide">Song title<input id="fTitle" placeholder="Never Once"></label>
+    <label>Role<input id="fRole" placeholder="Solemn"></label>
+    <label>Key<input id="fKey" placeholder="G"></label>
+    <label>Capo<input id="fCapo" placeholder="0" inputmode="numeric"></label>
+    <label>Tempo<input id="fTempo" placeholder="72" inputmode="numeric"></label>
+    <label>Add to service<select id="fSet"></select></label>
+    <label class="wide">Playing order<input id="fMap" placeholder="Tap the buttons below"></label>
+  </div>
+  <div class="mapbuild">
+    <p class="lbl">Tap a section to add it</p>
+    <div class="row" id="mapChips"><span class="none">Paste or type the song first — the sections will appear here to tap.</span></div>
+    <p class="lbl">Playing order — tap one to select, then use the buttons</p>
+    <div class="row" id="orderRow"></div>
+    <div class="row">
+      <button class="mini" id="mapX2">×2</button>
+      <button class="mini" id="mapX1">×1</button>
+      <button class="mini" id="mapLeft">← Move</button>
+      <button class="mini" id="mapRight">Move →</button>
+      <button class="mini" id="mapDel">Delete</button>
+      <button class="mini" id="mapClear">Clear all</button>
+    </div>
+  </div>
+  <p class="ed-body-label">Words and chords — paste anything, it converts itself</p>
+  <textarea id="edText" spellcheck="false" placeholder="Paste a chart straight from your old file or a tab site.&#10;&#10;Or type it plainly:&#10;&#10;Verse 1&#10;      G            D&#10;Standing on this mountaintop"></textarea>
+</div>
+
+<div class="playbar" id="playbar">
+  <button class="pb" id="pbPrev" aria-label="Previous section">‹ Prev</button>
+  <button class="pb go" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
+  <button class="pb" id="pbNext" aria-label="Next section">Next ›</button>
+  <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="sheet" id="sheet">
+  <h3>Set the chord</h3>
+  <div class="preview" id="pkPrev">—</div>
+  <div class="row" id="pkRoot"></div>
+  <div class="row" id="pkAcc"></div>
+  <div class="row" id="pkQual"></div>
+  <h3 class="sub">Bass note (for slash chords)</h3>
+  <div class="row" id="pkBass"></div>
+  <div class="row" id="pkBassAcc"></div>
+  <div class="row act">
+    <button class="btn go" id="pkApply">Apply</button>
+    <button class="btn" id="pkRemove">Remove chord</button>
+    <button class="btn" id="pkCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="stickytop">
+<header class="bar">
+  <div class="bar-row">
+    <button class="menu-btn" id="menu" aria-label="Open set list"><span></span></button>
+    <div class="title-wrap">
+      <p class="song-title" id="title">—</p>
+      <div class="song-meta" id="meta"></div>
+    </div>
+    <button class="edit-toggle" id="editToggle" aria-pressed="false" aria-label="Edit chords" title="Tap chords to change them">✎</button>
+    <button class="edit-toggle" id="songEdit" aria-label="Edit this song's words and chords" title="Edit this song">✏︎</button>
+  </div>
+  <div class="ctrls">
+    <div class="pill">Key <button id="down" aria-label="Transpose down">–</button><b id="keyOut">—</b><button id="up" aria-label="Transpose up">+</button></div>
+    <div class="pill">Capo <button id="capoDown" aria-label="Capo down">–</button><b id="capoOut">0</b><button id="capoUp" aria-label="Capo up">+</button></div>
+    <div class="pill">Size <button id="fsDown" aria-label="Smaller text">–</button><button id="fsUp" aria-label="Larger text">+</button></div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="full" aria-pressed="true">Full</button>
+      <button data-view="chords" aria-pressed="false">Chords</button>
+      <button data-view="lyrics" aria-pressed="false">Lyrics</button>
+    </div>
+  </div>
+</header>
+
+<div class="roadmap" id="roadmap"></div>
+</div>
+<main id="song"></main>
+
+<script>
+/* ============================================================
+   Chord engine — parse, transpose, capo. No libraries, no CDN.
+   ============================================================ */
+const SHARP=["A","A#","B","C","C#","D","D#","E","F","F#","G","G#"];
+const FLAT =["A","Bb","B","C","Db","D","Eb","E","F","Gb","G","Ab"];
+const FLATKEYS=new Set(["F","Bb","Eb","Ab","Db","Gb","Dm","Gm","Cm","Fm","Bbm","Ebm"]);
+const RE=/^([A-G])([#b]?)(.*)$/;
+
+function idx(root,acc){
+  let base=SHARP.indexOf(root);
+  if(acc==="#")base=(base+1)%12;
+  if(acc==="b")base=(base+11)%12;
+  return base;
+}
+function shift(tok,n,useFlat){
+  const m=tok.match(RE);
+  if(!m)return tok;
+  const[,root,acc,rest]=m;
+  const name=(useFlat?FLAT:SHARP)[(idx(root,acc)+n+120)%12];
+  // handle slash bass
+  const slash=rest.indexOf("/");
+  if(slash>-1){
+    const tail=rest.slice(slash+1), head=rest.slice(0,slash);
+    return name+head+"/"+shift(tail,n,useFlat);
+  }
+  return name+rest;
+}
+function transposeChord(tok,n,key){
+  if(n===0)return tok;
+  return shift(tok,n,FLATKEYS.has(key));
+}
+
+/* ---------- ChordPro-ish parser ---------- */
+function parseSong(src){
+  const song={meta:{},sections:[]};
+  let cur=null;
+  src.split("\n").forEach(raw=>{
+    const line=raw.replace(/\s+$/,"");
+    const d=line.match(/^\{(\w+):\s*(.*)\}\s*$/);
+    if(d){
+      const k=d[1].toLowerCase(), v=d[2].trim();
+      if(k==="section"){
+        cur={label:v,lines:[]};song.sections.push(cur);
+      }else if(k==="cue"){
+        if(cur)cur.lines.push({type:"cue",text:v});
+      }else song.meta[k]=v;
+      return;
+    }
+    if(!line.trim()){if(cur)cur.lines.push({type:"gap"});return;}
+    /* a plain section name on its own line, no braces needed */
+    const bare=line.trim().match(/^(intro|verse\s*\d*|pre[- ]?chorus|chorus(?:\s*\([^)]*\))?|bridge|interlude|instrumental|instrument|mid[- ]?section|post[- ]?chorus|channel|tag|refrain|outro|ending|end)\s*:?\s*$/i);
+    if(bare){cur={label:line.trim().replace(/:$/,""),lines:[]};song.sections.push(cur);return;}
+    /* [Chorus] style header pasted from a tab site */
+    const br=line.trim().match(/^\[([^\]]+)\]$/);
+    if(br&&!/^[A-G][#b]?(\s|$|m|maj|min|sus|dim|aug|add|\d|\/)/.test(br[1])){
+      cur={label:br[1],lines:[]};song.sections.push(cur);return;
+    }
+    if(!cur){cur={label:"",lines:[]};song.sections.push(cur);}
+    // a bar/chord-only row: contains | or is only bracketed chords
+    if(/^[|\s]*\|/.test(line)||/^(\s*\[[^\]]+\]\s*)+$/.test(line)){
+      cur.lines.push({type:"row",text:line.replace(/[\[\]]/g,"")});
+      return;
+    }
+    cur.lines.push({type:"pairs",text:line});
+  });
+  return song;
+}
+
+/* split "[C]Thank you [G]God" into chord/lyric pairs */
+function toPairs(text){
+  const out=[];const re=/\[([^\]]+)\]/g;let last=0,m;
+  while((m=re.exec(text))!==null){
+    if(m.index>last)out.push({c:"",l:text.slice(last,m.index)});
+    out.push({c:m[1],l:""});
+    last=re.lastIndex;
+  }
+  if(last<text.length){
+    if(out.length&&out[out.length-1].l==="")out[out.length-1].l=text.slice(last);
+    else out.push({c:"",l:text.slice(last)});
+  }
+  // merge a chord with the text that follows it
+  const merged=[];
+  for(let i=0;i<out.length;i++){
+    if(out[i].c&&!out[i].l&&out[i+1]&&!out[i+1].c){merged.push({c:out[i].c,l:out[i+1].l});i++;}
+    else merged.push(out[i]);
+  }
+  return merged;
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+/* ============================================================
+   WHO CAN EDIT
+   true  = everyone opening the link sees the editing tools
+   false = read-only for everyone, except a link ending in #edit
+   ============================================================ */
+const ALLOW_EDIT = true;
+
+let state={i:0,steps:0,capo:0,fs:17,step:0,pos:-1};
+let jumping=false,jumpTimer=null,keepScroll=false;
+
+function currentSong(){return parseSong(SONGS[state.i]);}
+
+/* The arrangement is a list of PERFORMANCE STEPS. A section lives in the body
+   once, but the map may play it several times; step 6 and step 2 can both be
+   the Chorus and still be different places in the service. Everything that
+   navigates works on step indexes, never on section names. */
+function mapSteps(s){
+  return (s.meta.map||"").split("-").map(x=>x.trim()).filter(Boolean).map(tok=>{
+    const rep=tok.match(/x(\d+)$/i);
+    const label=tok.replace(/\s*x\d+$/i,"");
+    return {label,rep:rep?rep[1]:null,short:label.toLowerCase().replace(/\s+/g,"")};
+  });
+}
+function sectionForStep(i){
+  const st=mapSteps(currentSong())[i];
+  if(!st)return null;
+  return [...document.querySelectorAll(".sec")].find(el=>el.dataset.short===st.short)||null;
+}
+function scrollToStep(i,smooth){
+  const t=sectionForStep(i); if(!t)return;
+  const off=document.querySelector(".stickytop").getBoundingClientRect().height;
+  jumping=true;
+  window.scrollTo({top:t.getBoundingClientRect().top+window.scrollY-off-6,behavior:smooth?"smooth":"auto"});
+  clearTimeout(jumpTimer);
+  jumpTimer=setTimeout(()=>{jumping=false;},650);
+}
+function goStep(i){
+  const steps=mapSteps(currentSong());
+  if(!steps.length)return;
+  state.step=Math.max(0,Math.min(steps.length-1,i));
+  paintSteps();
+  /* Jumping to a section must move the SINGING there too. Scrolling alone left
+     the sung line where it was, and keepInBand promptly dragged the page back. */
+  const at=PLAY.findIndex(x=>x.step===state.step);
+  if(at>=0){state.pos=at;paintActive();return;}
+  scrollToStep(state.step,true);
+}
+/* highlight exactly ONE chip: the current step */
+function paintSteps(){
+  const rm=document.getElementById("roadmap");
+  const kids=[...rm.children];
+  kids.forEach((c,i)=>c.dataset.live=i===state.step?"1":"0");
+  const cur=kids[state.step];
+  if(cur){
+    const l=cur.offsetLeft,r=l+cur.offsetWidth;
+    if(l<rm.scrollLeft+12)rm.scrollLeft=l-12;
+    else if(r>rm.scrollLeft+rm.clientWidth-12)rm.scrollLeft=r-rm.clientWidth+12;
+  }
+}
+
+function render(){
+  const s=currentSong();
+  const baseKey=s.meta.key||"C";
+  const n=state.steps-state.capo;
+  const shown=transposeChord(baseKey.replace(/m$/,""),n,baseKey)+(/m$/.test(baseKey)?"m":"");
+  const sounding=transposeChord(baseKey.replace(/m$/,""),state.steps,baseKey)+(/m$/.test(baseKey)?"m":"");
+
+  document.getElementById("title").textContent=s.meta.title||"Untitled";
+  document.getElementById("meta").innerHTML=
+    (s.meta.role?"<b>"+s.meta.role+"</b> · ":"")+
+    "sounds in "+sounding+(state.capo?" · play "+shown+" shapes":"")+
+    (s.meta.tempo?" · "+s.meta.tempo+" bpm":"");
+  document.getElementById("keyOut").textContent=shown;
+  document.getElementById("capoOut").textContent=state.capo;
+
+  /* roadmap chips */
+  const rm=document.getElementById("roadmap");rm.innerHTML="";
+  mapSteps(s).forEach((st,i)=>{
+    const b=document.createElement("button");
+    b.className="chip";
+    b.dataset.short=st.short;
+    b.dataset.step=i;
+    b.innerHTML=st.label+(st.rep?'<span class="rep">×'+st.rep+"</span>":"");
+    b.onclick=()=>goStep(i);
+    rm.appendChild(b);
+  });
+
+  /* body */
+  const main=document.getElementById("song");main.innerHTML="";
+  s.sections.forEach((sec,si)=>{
+    const wrap=document.createElement("section");
+    wrap.className="sec";
+    wrap.dataset.short=shortOf(sec.label);
+    if(sec.label){
+      const h=document.createElement("div");
+      h.className="sec-label";
+      h.textContent=sec.label;
+      wrap.appendChild(h);
+    }
+    sec.lines.forEach((ln,li)=>{
+      if(ln.type==="gap"){wrap.appendChild(document.createElement("br"));return;}
+      if(ln.type==="cue"){
+        const c=document.createElement("p");c.className="cue";c.textContent="▸ "+ln.text;
+        wrap.appendChild(c);return;
+      }
+      const p=document.createElement("p");
+      if(ln.type==="row"){
+        p.className="line chords-row";
+        p.textContent=ln.text.replace(/[A-G][#b]?[^\s|]*/g,t=>transposeChord(t,n,baseKey));
+        wrap.appendChild(p);return;
+      }
+      p.className="line";
+      toPairs(ln.text).forEach((pr,pi)=>{
+        const sp=document.createElement("span");
+        sp.className=pr.l?"pair":"pair nolyric";
+        sp.dataset.s=si;sp.dataset.l=li;sp.dataset.p=pi;
+        const c=document.createElement("span");c.className="c";
+        c.textContent=pr.c?transposeChord(pr.c,n,baseKey):"";
+        const l=document.createElement("span");l.className="l";
+        if(document.body.dataset.edit==="1"&&pr.l){
+          let off=0;
+          (pr.l.match(/\s+|\S+/g)||[]).forEach(part=>{
+            const w=document.createElement("span");
+            w.className=/\S/.test(part)?"w":"";
+            w.textContent=part;w.dataset.off=off;
+            l.appendChild(w);off+=part.length;
+          });
+        }else l.textContent=pr.l;
+        sp.appendChild(c);sp.appendChild(l);p.appendChild(sp);
+      });
+      wrap.appendChild(p);
+    });
+    main.appendChild(wrap);
+  });
+  if(document.body.dataset.edit==="1"){
+    const note=document.createElement("p");
+    note.className="edit-note";
+    note.textContent="Tap a chord to change it, or tap a word to put a chord in front of it. Press ✎ again when you're done.";
+    main.insertBefore(note,main.firstChild);
+  }
+  if(keepScroll){
+    const y=keepScroll;keepScroll=false;
+    requestAnimationFrame(()=>window.scrollTo(0,y));
+  }else window.scrollTo(0,0);
+  PLAY=buildPlay();paintedPos=-1;
+  paintSteps();
+  buildList();
+}
+
+/* ---------- turn the parsed song back into text ---------- */
+const ORDER=["title","role","key","capo","tempo","folder","map"];
+function serialize(song){
+  const out=[];
+  ORDER.forEach(k=>{if(song.meta[k]!==undefined)out.push("{"+k+": "+song.meta[k]+"}");});
+  Object.keys(song.meta).forEach(k=>{if(!ORDER.includes(k))out.push("{"+k+": "+song.meta[k]+"}");});
+  song.sections.forEach(sec=>{
+    if(sec.label)out.push("{section: "+sec.label+"}");
+    sec.lines.forEach(ln=>{
+      if(ln.type==="gap")out.push("");
+      else if(ln.type==="cue")out.push("{cue: "+ln.text+"}");
+      else out.push(ln.text);
+    });
+  });
+  return out.join("\n");
+}
+function pairsToText(pairs){
+  return pairs.map(p=>(p.c?"["+p.c+"]":"")+p.l).join("");
+}
+
+/* ---------- chord picker ---------- */
+const sheet=document.getElementById("sheet");
+let pick={s:0,l:0,p:0,root:"C",acc:"",qual:"",bass:"",bassAcc:"",insertAt:null};
+
+/* The rows are built ONCE. Rebuilding them on every tap detached the button
+   that was just tapped, so the outside-click handler could no longer see that
+   the click came from inside the sheet and closed the picker under the user. */
+const PK_ROWS=[
+  ["pkRoot","root",["C","D","E","F","G","A","B"].map(v=>({label:v,val:v}))],
+  ["pkAcc","acc",[{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}]],
+  ["pkQual","qual",[{label:"major",val:""},{label:"m",val:"m"},{label:"7",val:"7"},{label:"m7",val:"m7"},
+      {label:"maj7",val:"maj7"},{label:"sus2",val:"sus2"},{label:"sus4",val:"sus4"},
+      {label:"add9",val:"add9"},{label:"dim",val:"dim"}]],
+  ["pkBass","bass",[{label:"none",val:""}].concat(["C","D","E","F","G","A","B"].map(v=>({label:v,val:v})))],
+  ["pkBassAcc","bassAcc",[{label:"natural",val:""},{label:"\u266f",val:"#"},{label:"\u266d",val:"b"}]]
+];
+let pkBuilt=false;
+function buildPickerRows(){
+  PK_ROWS.forEach(([id,key,vals])=>{
+    const box=document.getElementById(id);box.innerHTML="";
+    vals.forEach(v=>{
+      const b=document.createElement("button");
+      b.className="k";b.textContent=v.label;b.dataset.val=v.val;
+      b.onclick=()=>{pick[key]=v.val;paintPicker();};
+      box.appendChild(b);
+    });
+  });
+  pkBuilt=true;
+}
+function paintPicker(){
+  if(!pkBuilt)buildPickerRows();
+  PK_ROWS.forEach(([id,key])=>{
+    [...document.getElementById(id).children].forEach(b=>{
+      b.dataset.sel=pick[key]===b.dataset.val?"1":"0";
+    });
+  });
+  document.getElementById("pkBassAcc").style.opacity=pick.bass?"1":".35";
+  document.getElementById("pkPrev").textContent=pickChord();
+}
+/* the chord the picker currently describes */
+function pickChord(){
+  return pick.root+pick.acc+pick.qual+(pick.bass?"/"+pick.bass+pick.bassAcc:"");
+}
+function openPicker(existing){
+  const raw=(existing||"").trim();
+  const sl=raw.indexOf("/");
+  const head=sl>-1?raw.slice(0,sl):raw, tail=sl>-1?raw.slice(sl+1):"";
+  const m=head.match(/^([A-G])([#b]?)(.*)$/);
+  pick.root=m?m[1]:"C";pick.acc=m?m[2]:"";pick.qual=m?m[3]:"";
+  const bm=tail.match(/^([A-G])([#b]?)/);
+  pick.bass=bm?bm[1]:"";pick.bassAcc=bm?bm[2]:"";
+  paintPicker();sheet.dataset.open="1";
+}
+function closePicker(){sheet.dataset.open="0";}
+document.getElementById("pkCancel").onclick=closePicker;
+
+/* write a chord back into the song source */
+function writeChord(chord){
+  const song=parseSong(SONGS[state.i]);
+  const line=song.sections[pick.s].lines[pick.l];
+  let pairs=toPairs(line.text);
+  if(pick.insertAt!==null){
+    const t=pairs[pick.p];
+    const before={c:t.c,l:t.l.slice(0,pick.insertAt)};
+    const after={c:chord,l:t.l.slice(pick.insertAt)};
+    pairs.splice(pick.p,1,before,after);
+  }else{
+    if(chord===null){
+      pairs[pick.p].c="";
+      if(pick.p>0&&!pairs[pick.p].c){
+        pairs[pick.p-1].l+=pairs[pick.p].l;pairs.splice(pick.p,1);
+      }
+    }else pairs[pick.p].c=chord;
+  }
+  line.text=pairsToText(pairs);
+  SONGS[state.i]=serialize(song);
+  saveLocal();
+  keepScroll=window.scrollY;
+  closePicker();render();
+}
+document.getElementById("pkApply").onclick=()=>{
+  /* store it in the written key, not the transposed one */
+  const shown=pickChord();
+  const back=transposeChord(shown,-(state.steps-state.capo),parseSong(SONGS[state.i]).meta.key||"C");
+  writeChord(back);
+  toast("Chord updated");
+};
+document.getElementById("pkRemove").onclick=()=>{writeChord(null);toast("Chord removed");};
+
+/* tapping the chart in edit mode — but a swipe is a scroll, not a tap */
+let touchY=null,touchMoved=false;
+const songEl=document.getElementById("song");
+songEl.addEventListener("touchstart",e=>{
+  touchY=e.touches[0].clientY;touchMoved=false;
+},{passive:true});
+songEl.addEventListener("touchmove",e=>{
+  if(touchY!==null&&Math.abs(e.touches[0].clientY-touchY)>8)touchMoved=true;
+},{passive:true});
+
+songEl.addEventListener("click",e=>{
+  if(document.body.dataset.edit!=="1"){
+    /* silence here reads as "the app is broken" — say what to press */
+    if(e.target.closest(".pair .c")&&document.body.dataset.readonly!=="1")
+      toast("Press \u270e at the top to change chords");
+    return;
+  }
+  if(touchMoved){touchMoved=false;return;}
+  const chordEl=e.target.closest(".pair .c");
+  const wordEl=e.target.closest(".w");
+  const pairEl=e.target.closest(".pair");
+  if(!pairEl)return;
+  pick.s=+pairEl.dataset.s;pick.l=+pairEl.dataset.l;pick.p=+pairEl.dataset.p;
+  if(chordEl){pick.insertAt=null;openPicker(chordEl.textContent.trim());return;}
+  if(wordEl){pick.insertAt=+wordEl.dataset.off;openPicker("");}
+});
+
+/* close the picker by tapping anywhere off it, or with Escape */
+document.addEventListener("click",e=>{
+  if(sheet.dataset.open!=="1")return;
+  /* composedPath is captured at dispatch, so it still names the sheet even if
+     the handler detached the node that was clicked */
+  const path=e.composedPath?e.composedPath():[];
+  if(path.includes(sheet)||path.includes(songEl))return;
+  if(e.target.closest&&(e.target.closest("#sheet")||e.target.closest("#song")))return;
+  closePicker();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closePicker();});
+
+document.getElementById("editToggle").onclick=()=>{
+  const on=document.body.dataset.edit==="1";
+  document.body.dataset.edit=on?"0":"1";
+  document.getElementById("editToggle").setAttribute("aria-pressed",on?"false":"true");
+  closePicker();
+  keepScroll=window.scrollY;
+  render();
+  if(!on)toast("Edit mode on — tap a chord or a word");
+};
+
+function shortOf(label){
+  const l=label.toLowerCase();
+  const par=l.match(/\(([^)]+)\)/);
+  const tail=par?"("+par[1].replace(/\s+/g,"")+")":"";
+  return base(l.replace(/\(.*?\)/g,"").trim())+tail;
+}
+function base(l){
+  if(/^intro/.test(l))return"intro";
+  if(/^pre/.test(l))return"pc";
+  if(/^chorus 2/.test(l))return"c2";
+  if(/^chorus/.test(l))return"c";
+  if(/^verse\s*(\d)/.test(l))return"v"+l.match(/verse\s*(\d)/)[1];
+  if(/^bridge/.test(l))return"br";
+  if(/^inter/.test(l))return"int";
+  if(/^instrument/.test(l))return"inst";
+  if(/^mid/.test(l))return"mid";
+  if(/^post/.test(l))return"post";
+  if(/^outro/.test(l))return"outro";
+  if(/^end/.test(l))return"end";
+  if(/^channel/.test(l))return"ch";
+  return l.replace(/\s+/g,"");
+}
+
+/* ============================================================
+   SERVICES — a service is a named, ordered list of songs from the
+   library, e.g. "Sunday 7 Sept". A song may appear in any number of
+   services; the library keeps exactly one copy of the words.
+   Songs are referenced by title.
+   ============================================================ */
+let activeSet=-1, addMode=false;
+function titleOf(src){return (parseSong(src).meta.title||"Untitled").trim();}
+function indexOfTitle(t){return SONGS.findIndex(x=>titleOf(x)===t);}
+function setSongs(si){
+  if(si<0||!SETS[si])return null;
+  return SETS[si].songs.map(indexOfTitle).filter(i=>i>=0);
+}
+function paintSetPicker(){
+  const sel=document.getElementById("setPick");
+  sel.innerHTML="";
+  const all=document.createElement("option");
+  all.value="-1";all.textContent="All songs ("+SONGS.length+")";
+  sel.appendChild(all);
+  SETS.forEach((st,i)=>{
+    const o=document.createElement("option");
+    o.value=String(i);o.textContent=st.name+" ("+st.songs.length+")";
+    sel.appendChild(o);
+  });
+  sel.value=String(activeSet);
+  document.body.dataset.setmode=activeSet>=0?"set":"all";
+  const btn=document.getElementById("setAdd");
+  btn.dataset.on=addMode?"1":"0";
+  btn.textContent=addMode?"✓ Done adding":"＋ Add songs to this service";
+}
+function buildList(){
+  const list=document.getElementById("list");list.innerHTML="";
+  paintSetPicker();
+  const q=(document.getElementById("find").value||"").trim().toLowerCase();
+  /* which songs, and in what order */
+  let rows;
+  if(activeSet>=0&&!addMode){
+    rows=(setSongs(activeSet)||[]).map(i=>({i,m:parseSong(SONGS[i]).meta}));
+  }else{
+    rows=SONGS.map((src,i)=>({i,m:parseSong(src).meta}));
+  }
+  if(q)rows=rows.filter(({m})=>
+    ((m.title||"")+" "+(m.role||"")+" "+(m.key||"")).toLowerCase().includes(q));
+  if(!rows.length){
+    list.innerHTML='<p class="nores">'+
+      (activeSet>=0&&!addMode&&!q
+        ?'This service has no songs yet. Press “Add songs”.'
+        :'Nothing matches.')+'</p>';
+    return;
+  }
+  rows.forEach(({i,m})=>{
+    const b=document.createElement("button");
+    b.className="item";
+    b.setAttribute("aria-current",i===state.i?"true":"false");
+    let extra="";
+    if(activeSet>=0&&addMode){
+      const inSet=(SETS[activeSet].songs||[]).includes(titleOf(SONGS[i]));
+      extra='<span class="pick">'+(inSet?"✓":"＋")+'</span>';
+    }else if(activeSet>=0){
+      extra='<span class="pick">−</span>';
+    }
+    b.innerHTML=extra+'<div class="n">'+(m.title||"Untitled")+'</div><div class="m">'+
+                (m.role||"")+" · "+(m.key||"?")+(m.capo&&m.capo!=="0"?" · capo "+m.capo:"")+"</div>";
+    b.onclick=(ev)=>{
+      if(activeSet>=0&&ev.target.closest(".pick")){
+        const t=titleOf(SONGS[i]), arr=SETS[activeSet].songs;
+        const at=arr.indexOf(t);
+        if(addMode){ at<0?arr.push(t):arr.splice(at,1); }
+        else if(at>=0){ arr.splice(at,1); }
+        saveLocal();buildList();return;
+      }
+      openSong(i);
+    };
+    list.appendChild(b);
+  });
+}
+document.getElementById("setPick").onchange=e=>{
+  activeSet=parseInt(e.target.value,10);addMode=false;buildList();
+};
+document.getElementById("setNew").onclick=()=>{
+  const name=(prompt("Name this service — a date works well, e.g. Sunday 7 Sept")||"").trim();
+  if(!name)return;
+  SETS.push({name,songs:[]});
+  activeSet=SETS.length-1;addMode=true;saveLocal();buildList();
+  toast("Service created — now pick its songs");
+};
+document.getElementById("setEdit").onclick=()=>{
+  if(activeSet<0){toast("Choose a service first");return;}
+  const cur=SETS[activeSet];
+  const name=prompt('Rename this service, or clear the box to delete it.',cur.name);
+  if(name===null)return;
+  if(!name.trim()){
+    if(confirm('Delete the service "'+cur.name+'"? The songs stay in the library.')){
+      SETS.splice(activeSet,1);activeSet=-1;addMode=false;saveLocal();buildList();toast("Service deleted");
+    }
+    return;
+  }
+  cur.name=name.trim();saveLocal();buildList();toast("Renamed");
+};
+document.getElementById("setAdd").onclick=()=>{
+  if(activeSet<0)return;
+  addMode=!addMode;buildList();
+};
+function openSong(i){
+  state.i=i;state.steps=0;state.step=0;state.pos=-1;
+  state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
+  setPlaying(false);closeDrawer();render();
+}
+
+/* ============================================================
+   PLAY — karaoke, not a conveyor belt.
+   The highlight steps from line to line in time with the singing, and the
+   page moves only when the sung line would drift out of the comfortable
+   reading band. A constant-rate crawl whose highlight is merely whatever
+   sits under a fixed y never lands on the line at the moment you sing it.
+   ============================================================ */
+let playing=false,rafId=0,nextAt=0;
+let dwell=3.4;                                   /* seconds for a normal line */
+const DWELLS=[2.0,2.6,3.0,3.4,4.0,4.8,6.0];
+
+function songLines(){return [...document.querySelectorAll("#song .line")];}
+
+/* The page shows each section once; the arrangement decides what is actually
+   sung, and how often. PLAY is that running order flattened — one entry per
+   line per pass — so a chorus played three times is three runs through the
+   same lines, and a bridge marked x2 really is sung twice. Walking the page
+   top to bottom instead (which is what this used to do) plays every section
+   once, in the order they happen to be written. */
+let PLAY=[];
+function buildPlay(){
+  const steps=mapSteps(currentSong());
+  const out=[];
+  if(!steps.length){                       /* no arrangement written — read it straight through */
+    songLines().forEach(el=>out.push({el,step:-1,pass:0}));
+    return out;
+  }
+  steps.forEach((st,si)=>{
+    const sec=[...document.querySelectorAll(".sec")].find(e=>e.dataset.short===st.short);
+    if(!sec)return;
+    const lines=[...sec.querySelectorAll(".line")];
+    if(!lines.length)return;
+    const reps=Math.max(1,parseInt(st.rep||"1",10)||1);
+    for(let r=0;r<reps;r++)lines.forEach(el=>out.push({el,step:si,pass:r}));
+  });
+  return out.length?out:songLines().map(el=>({el,step:-1,pass:0}));
+}
+/* where in the running order does this line come next? */
+function posOfLine(el,from){
+  for(let i=Math.max(0,from);i<PLAY.length;i++)if(PLAY[i].el===el)return i;
+  for(let i=0;i<PLAY.length;i++)if(PLAY[i].el===el)return i;
+  return -1;
+}
+
+/* a long line is sung for longer than a two-word one */
+function lineDwell(el){
+  const bpm=parseFloat(currentSong().meta.tempo||"")||0;
+  const base=bpm>0?(60/bpm)*4:dwell;             /* one 4/4 bar when we know the tempo */
+  if(el&&el.classList.contains("chords-row"))return base;
+  const n=el?el.textContent.trim().length:28;
+  return base*Math.max(0.55,Math.min(1.8,n/28));
+}
+/* Split the sung line into words once, so the highlight can fill across it the
+   way a karaoke line does. Only the active line is split, and only outside edit
+   mode, which does its own splitting into tappable words. */
+function prepWords(line){
+  if(!line||line.dataset.wordy==="1"||line.classList.contains("chords-row"))return;
+  line.querySelectorAll(".pair .l").forEach(l=>{
+    const txt=l.textContent;
+    if(!txt)return;
+    l.textContent="";
+    (txt.match(/\s+|\S+/g)||[]).forEach(part=>{
+      const sp=document.createElement("span");
+      sp.textContent=part;
+      if(/\S/.test(part))sp.className="wd";
+      l.appendChild(sp);
+    });
+  });
+  line.dataset.wordy="1";
+}
+let words=[],sungCount=-1,lineStart=0,lineMs=0;
+function markWords(frac){
+  if(!words.length)return;
+  const n=Math.max(0,Math.min(words.length,Math.floor(frac*words.length)+1));
+  if(n===sungCount)return;
+  sungCount=n;
+  for(let i=0;i<words.length;i++)words[i].classList.toggle("sung",i<n);
+}
+let paintedPos=-1;
+function paintActive(){
+  const prev=document.querySelector(".line.active");
+  const item=PLAY[state.pos];
+  const el=item&&item.el;
+  /* Keyed on the position in the running order, not the element: a one-line
+     section played twice lands on the same element twice and must still restart
+     its timing and its word fill. */
+  if(paintedPos===state.pos&&prev)return;
+  paintedPos=state.pos;
+  if(prev){prev.classList.remove("active");
+    prev.querySelectorAll(".wd.sung").forEach(w=>w.classList.remove("sung"));}
+  if(el){
+    el.classList.add("active");
+    if(document.body.dataset.edit!=="1")prepWords(el);
+    words=[...el.querySelectorAll(".wd")];
+    sungCount=-1;
+    lineStart=performance.now();
+    lineMs=lineDwell(el)*1000;
+    nextAt=lineStart+lineMs;
+    markWords(0);
+    keepInBand(el);
+    /* the chip follows the running order, so the third chorus lights the third
+       chorus chip and not the first */
+    if(item.step>=0&&item.step!==state.step){state.step=item.step;paintSteps();}
+    else if(item.step<0){const sec=el.closest(".sec");if(sec)syncStep(sec.dataset.short);}
+  }
+}
+/* scroll only when the sung line leaves the band — a page that moves under
+   every single line is harder to read than one that settles */
+function keepInBand(el){
+  const top=document.querySelector(".stickytop").getBoundingClientRect().height;
+  const space=window.innerHeight-top;
+  const r=el.getBoundingClientRect();
+  if(r.top<top+space*0.18||r.bottom>top+space*0.62){
+    jumping=true;
+    window.scrollTo({top:r.top+window.scrollY-(top+space*0.30),behavior:"smooth"});
+    clearTimeout(jumpTimer);
+    jumpTimer=setTimeout(()=>{jumping=false;},600);
+  }
+}
+function lineAt(y){
+  const s=songLines();
+  for(let i=0;i<s.length;i++)if(s[i].getBoundingClientRect().bottom>y)return i;
+  return Math.max(0,s.length-1);
+}
+function setPlaying(on){
+  playing=on;
+  document.body.classList.toggle("playing",on);
+  const btn=document.getElementById("pbPlay");
+  btn.textContent=on?"\u2759\u2759 Pause":"\u25b6 Play";
+  btn.classList.toggle("go",!on);
+  if(on){
+    /* Press play and the song starts at its first line. Starting from whatever
+       was under the header meant scrolling to read ahead silently moved the
+       starting point. To begin elsewhere, tap that line first. */
+    if(state.pos<0||state.pos>=PLAY.length){
+      state.pos=0;
+      window.scrollTo({top:0,behavior:"auto"});
+    }
+    paintActive();
+    rafId=requestAnimationFrame(tick);
+  }else{
+    if(rafId)cancelAnimationFrame(rafId);
+    rafId=0;
+  }
+}
+function tick(t){
+  if(!playing){rafId=0;return;}
+  if(lineMs>0)markWords((t-lineStart)/lineMs);
+  if(t>=nextAt){
+    if(state.pos>=PLAY.length-1){setPlaying(false);toast("End of song");return;}
+    state.pos++;
+    paintActive();          /* sets lineStart, lineMs and nextAt for the new line */
+  }
+  rafId=requestAnimationFrame(tick);
+}
+document.getElementById("pbPlay").onclick=()=>setPlaying(!playing);
+document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
+document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
+function showDwell(){document.getElementById("pbSpeed").textContent=dwell.toFixed(1)+"s";}
+document.getElementById("pbSpeed").onclick=()=>{
+  dwell=DWELLS[(DWELLS.indexOf(dwell)+1)%DWELLS.length];
+  showDwell();toast(dwell.toFixed(1)+"s per line");
+};
+
+/* tap the line you are actually on — the fastest way back in sync */
+songEl.addEventListener("click",e=>{
+  if(document.body.dataset.edit==="1")return;
+  const el=e.target.closest("#song .line");
+  if(!el)return;
+  const i=posOfLine(el,state.pos);
+  if(i<0)return;
+  state.pos=i;
+  document.body.classList.add("playing");   /* so the highlight shows even paused */
+  paintActive();
+});
+
+/* a drag means "I am reading somewhere else" — stop and let them lead */
+let dragY=null;
+addEventListener("touchstart",e=>{dragY=e.touches[0].clientY;},{passive:true});
+addEventListener("touchmove",e=>{
+  if(playing&&!jumping&&dragY!==null&&Math.abs(e.touches[0].clientY-dragY)>14){
+    setPlaying(false);toast("Paused — tap the line you are on");dragY=null;
+  }
+},{passive:true});
+addEventListener("touchend",()=>{dragY=null;},{passive:true});
+addEventListener("wheel",()=>{if(playing&&!jumping)setPlaying(false);},{passive:true});
+
+/* ---------- controls ---------- */
+const drawer=document.getElementById("drawer"),scrim=document.getElementById("scrim");
+function openDrawer(){drawer.dataset.open="1";scrim.dataset.open="1";}
+function closeDrawer(){drawer.dataset.open="0";scrim.dataset.open="0";}
+document.getElementById("menu").onclick=openDrawer;
+document.getElementById("find").addEventListener("input",buildList);
+scrim.onclick=closeDrawer;
+
+document.getElementById("up").onclick=()=>{state.steps++;render();};
+document.getElementById("down").onclick=()=>{state.steps--;render();};
+document.getElementById("capoUp").onclick=()=>{if(state.capo<11){state.capo++;render();}};
+document.getElementById("capoDown").onclick=()=>{if(state.capo>0){state.capo--;render();}};
+document.getElementById("fsUp").onclick=()=>{state.fs=Math.min(30,state.fs+1);document.documentElement.style.setProperty("--fs",state.fs+"px");};
+document.getElementById("fsDown").onclick=()=>{state.fs=Math.max(12,state.fs-1);document.documentElement.style.setProperty("--fs",state.fs+"px");};
+document.querySelectorAll(".seg button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+    document.body.dataset.view=b.dataset.view;
+  };
+});
+/* foot-pedal / keyboard: arrows and page keys move between songs */
+document.addEventListener("keydown",e=>{
+  /* never steal keys while the user is typing, or with the editor open */
+  const t=e.target;
+  if(t&&(t.matches("input,textarea,select")||t.isContentEditable))return;
+  if(document.getElementById("editor").dataset.open==="1")return;
+  if(["ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();nextSong(1);}
+  if(["ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();nextSong(-1);}
+});
+function nextSong(d){
+  /* inside a service, next/previous follows the service order */
+  const seq=(activeSet>=0?setSongs(activeSet):null);
+  if(seq&&seq.length){
+    const at=seq.indexOf(state.i);
+    if(at>=0){const j=at+d;if(j<0||j>=seq.length)return;openSong(seq[j]);return;}
+  }
+  const i=state.i+d;
+  if(i<0||i>=SONGS.length)return;
+  openSong(i);
+}
+
+/* ============================================================
+   SONGS — edit below. One template string per song.
+   Directives: title, role, key, capo, tempo, map
+   {section: Name} starts a block.  {cue: text} is a spoken/visual note.
+   Chords go inline in [square brackets] where the chord changes.
+   ============================================================ */
+const SONGS=[
+
+`{title: I Love This Family of God}
+{role: Welcome}
+{key: D}
+{capo: 0}
+{map: Intro - V1 - V1 - End}
+{section: Intro}
+| D | Em | A |
+{section: Verse 1}
+I love this [D]family of [Em]God[A]
+So closely [D]knitted into [Em]one[A]
+They've [G]taken me into their [A]hearts
+And [F#m]I'm so glad to be a [Bm]part
+Of [Em]this great [A]fami[D]ly
+{section: End}
+| Em | A | D |`,
+
+`{title: Joy}
+{role: Opening}
+{key: C}
+{capo: 5}
+{map: Intro - V1 - V2 - PC - C - Br - C}
+{cue: Verse 2 in the old chart was a duplicate of Verse 1. Confirm the real words with the leader.}
+{section: Intro}
+| C | G | D | Em |  (4x)
+{section: Verse 1}
+[C]You've turned it [G]all a[D]round[Em]
+[C]Where I was [G]hurting [D]now I'm re[Em]joicing
+[C]In Your love I'm [G]found[D] and [Em]I have [C]joy, [G]woah[D][Em]
+[C]You took a[G]way my [D]pain[Em]
+[C]You turned my [G]mourning [D]into [Em]dancing
+[C]I can smile a[G]gain[D] 'cause [Em]I have [C]joy, [G]woah[D][Em]
+{section: Verse 2}
+[C]You took a[G]way my [D]pain[Em]
+[C]You turned my [G]mourning [D]into [Em]dancing
+[C]I can smile a[G]gain[D] 'cause [Em]I have [C]joy, [G]woah[D][Em]
+{section: Pre-Chorus}
+[C]Let the celebration be[D]gin
+[C]Make a joyful [D]noise unto [G]Him
+[C]Come on every[D]body
+[C]Let's give Him [Em]praise for He is [D]good
+{section: Chorus}
+[G]You have given [C]me a joy that [Em]won't stop[G]
+And will [C]never leave, so I will [G]praise You with [C]gladness
+For [Em]You are [D]good [C]
+{section: Bridge}
+[G]You've turned my sadness into [C]gladness
+[G]You've turned my sorrow into [D]joy
+[G]Now I'm singing and I'm [C]dancing
+And [Em]I will [D]shout for [G]joy`,
+
+`{title: Faithfulness}
+{role: Fast}
+{key: C}
+{capo: 0}
+{map: Intro - C - Int - V1 - PC - C - Int - V2 - PC - C - Br - PC x2 - C(D) - C - Outro}
+{cue: Final chorus modulates to D with stops (N.C.) before dropping back to C.}
+{section: Intro}
+| C |
+{section: Chorus}
+[C]Your mercies are new every morning
+[C]Your steadfast love will never end
+[C]This hope won't fade in the [F]even[C]ing
+[Am7]Lord, how [G]great is Your [F]faithful[C]ness
+[Am7]Lord, how [G]great is Your [F]faithful[C]ness
+{section: Interlude}
+| C | Csus | C | Csus | C |
+{section: Verse 1}
+[C]Every hour, every minute of my life
+[Am7]Has been part of Your design
+[F]Lord, the whole world's in Your [C]hand
+[C]Every trial, every battle that I face
+[Am7]God, You've met me there with grace
+[F]Every part has served Your [C]plan
+{section: Verse 2}
+[C]Here and now
+[C]Looking back on where I've been
+[Am7]Still as good as You were then
+[F]There's no limit to Your [C]love
+{section: Pre-Chorus}
+[G]Through it all
+[C/E]You've been so, [F]so good
+[G]Kept Your word
+[Am7]Like You said You [F]would
+{section: Bridge}
+[Am7]Oh oh oh
+[F]Oh oh oh oh
+[C]Oh how great, oh how [Em]great
+[Am7]Oh oh oh
+[F]Oh oh oh oh
+[C]Lord, how great is Your [Em]faithfulness
+[Am7]Oh oh oh
+[F]Oh oh oh oh [C/G] [G/B]
+Oh how great, oh how great
+[Am7]Oh oh oh
+[F/A]Oh oh oh oh
+[C/G]Lord, how [G]great is Your [F]faithfulness
+{section: Chorus (D)}
+[D]Your mercies are new every morning   (N.C.)
+[D]Your steadfast love will never end   (N.C.)
+This hope won't fade in the evening   (N.C.)
+[Am7]Lord, how great is Your faithfulness
+{section: Outro}
+| C | Csus | C | Csus | C |`,
+
+`{title: How Great Is Our God}
+{role: Solemn}
+{key: G}
+{capo: 3}
+{map: V1 - C - V2 - C - Br - C x2}
+{section: Verse 1}
+The [G]splendor of a King, clothed in ma[Em]jesty
+Let all the [C]earth rejoice, all the [D]earth rejoice
+He [G]wraps himself in Light, and darkness tries to [Em]hide
+And [C]trembles at His voice, trembles at His [D]voice
+{section: Verse 2}
+[G]Age to age He stands, and time is in His [Em]hands
+Be[C]ginning and the end, beginning and the [D]end
+The [G]Godhead Three in One, Father, Spirit, [Em]Son
+The [C]Lion and the Lamb, the Lion and the [D]Lamb
+{section: Chorus}
+[G]How great is our God, sing with me
+[Em]How great is our God, and all will see
+How [C]great, how [D]great is our [G]God[D]
+{section: Bridge}
+[G]Name above all names, Worthy of our [Em]praise
+My [C]heart will sing how [D]great is our [G]God
+[G]Name above all names, Worthy of our [Em]praise
+My [C]heart will sing how [D]great is our [G]God`,
+
+`{title: Holy Forever}
+{role: Solemn}
+{key: G}
+{capo: 3}
+{map: V1 - PC - C - V2 - PC - C - Tag}
+{cue: Capo 3 puts this in Bb — the sounding key on the old chart.}
+{section: Verse 1}
+A [G]thousand generations
+Falling [C]down in [G]worship
+To [Em]sing the [D]song of ages to the [C]Lamb
+And [G]all who've gone before us and
+[C]All who will be[G]lieve
+Will [Em]sing the [D]song of ages to the [C]Lamb
+{section: Verse 2}
+[G]If you've been forgiven and
+[C]If you've been re[G]deemed
+[Em]Sing the [D]song forever to the [C]Lamb
+[G]If you walk in freedom and
+[C]If you bear His [G]name
+[Em]Sing the [D]song forever to the [C]Lamb
+{section: Pre-Chorus}
+[C]Your name is the highest
+[D]Your name is the greatest
+[Em]Your name stands a[C]bove them all
+[C]All thrones and dominions
+[D]All powers and positions
+[Em]Your name stands a[Am]bove them all
+{section: Chorus}
+And the [C]angels cry, [D]Holy
+[G]All creation cries, [Em]Holy
+[Am]You are lifted high, [D]Holy
+[G]Holy forever
+[C]Hear your people sing, [D]Holy
+[G]To the King of Kings, [Em]Holy
+[Am]You will always be, [D]Holy
+[G]Holy forever
+{section: Tag}
+We'll [Em]sing the [D]song forever and a[C]men`,
+
+`{title: Sa Biyaya}
+{role: Offering}
+{key: C}
+{capo: 0}
+{map: Intro - V1 - PC - C - V2 - PC - Int - Br - C - Outro}
+{section: Intro}
+| F | G | Em | Em | Dm | Am | Dm | Em | F | D/F# | G |
+{section: Verse 1}
+[C]Hesus Ikaw ay mabuti
+[F]Sa lahat ng panahon
+[Em]Di ka nag ba[Am]bago
+[Dm]Tapat Ka ngang tu[G]nay
+{section: Verse 2}
+[C]Ako ay namumuhay
+[F]Na higit pa sa mga
+[Em]mapagtagum[Am]pay
+[Dm]Dahil Sayo He[G]sus
+{section: Pre-Chorus}
+[C]Kaya naman ang puso koy nagpupuri
+[F]Nagpapasalamat
+[Em]Sa'yong kabuti[Am]han
+[Dm]Sa Iyong kahaba[G]gan
+{section: Chorus}
+Sa bi[F]yaya Mo la[G]mang ako na[Em]bubu[Am]hay
+Sa bi[Dm]yaya Mo la[G]mang a[C]ko
+nakakapag-pu[C7]ri
+Sa bi[F]yaya Mo la[G]mang ako ku[Em]maka[Am]pit
+Ang [Dm]lahat nitoy bi[G]yaya Mo sa[F]min[G]
+{section: Interlude}
+| F | F | Em7 | Am7 |
+{section: Bridge}
+[F]Sasayaw
+[F]Sa tuwa
+[Em7]At pasasala[Am7]mat
+[F]Tatalon
+[F]Sa galak
+[Em7]Papupuri[Am7]han Ka
+{cue: Repeat bridge, then straight to Chorus.}
+[Dm]Papupu[Em]rihan [F]Ka
+{section: Outro}
+| F | G | Em | Em | Dm | Am | Dm | Em | F | D/F# | G |`,
+
+`{title: Hallelujah I'm Free}
+{role: Fast}
+{key: C}
+{capo: 1}
+{map: Intro - V1 - C - Inst - V2 - C - Inst - Br - C - Inst}
+{section: Intro}
+| C |
+{section: Verse 1}
+[F]Thank you [C]God
+[G]Cause you saved my life
+[Am]I left the old be[G]hind
+And [F]You've been [C]good to [G]me
+[F]All my [C]life
+[G]You have been faithful
+[Am]Lord I am [G]grateful
+I [F]give You [C]all my [G]praise
+{section: Verse 2}
+[F]Ain't no [C]rock
+[G]Gonna cry out louder
+[Am]I'm gonna shout it
+You [F]can't [C]stop my [G]praise
+{section: Chorus}
+[F]Hallelu[C]jah I am free
+[G]You get all of me
+[Am]With every heartbeat
+[Am]Forever [C]I'm alive
+[G]You rewrote the [Am]story of my life
+[F]We give you [C]praise
+[G]Hallelu[Am]jah[G]
+[F]We give You [C]praise
+[G]Hallelujah
+{section: Instrument}
+| C |
+{section: Bridge}
+[C]Praise Him in the dark
+[F]Praise Him in the night
+[C]Praise Him in the battle
+[F]Praise Him in the fight
+[C]Praise Him when I'm up
+[F]Praise Him when I'm down
+With [Dm]every breath I [G]praise Him
+{cue: Repeat this half of the bridge 3x, then continue.}
+[C]Praise Him cause He's good
+[F]Praise Him cause He's true
+[C]He is never changing
+[F]Always coming through
+[C]Praise Him cause this mountain
+[F]It will be removed
+With [Dm]every breath I'll [G]praise the [C]Lord`,
+
+`{title: I've Got Joy}
+{role: Fast}
+{key: A}
+{capo: 0}
+{map: Intro - V1 - V2 - C - Int - V3 - V4 - C - Inst - Br - Post - Ch - C(stops) - C}
+{section: Intro}
+| A | D | F#m | E |  (2x)
+{section: Verse 1}
+[A]One thing [D]that I'm [F#m]sure [E]of
+[A]Your grace and [D]mercy
+It [F#m]follows me
+[E]All the days of my life
+{section: Verse 2}
+[A]One thing [D]that I can [F#m]count [E]on
+[A]Lord you are [D]faithful
+[F#m]All the days of my life
+[E]All the days of my life
+{cue: (Say) — leader ad-lib into chorus.}
+{section: Verse 3}
+[A]One thing [D]you have [F#m]promi[E]sed
+[A]You will be [D]there
+[F#m]All the days of my life
+[E]All the days of my life
+{cue: (One more time, say)}
+{section: Verse 4}
+[A]One thing [D]that I'm [F#m]sure [E]of
+[A]That you [D]love me
+[F#m]All the days of my life
+[E]All the days of my life
+{cue: N.C. — "let's go, let's go"}
+{section: Chorus}
+[A]I've got joy
+[D]Here in your presence
+It [F#m]feels like heaven [E]now
+(and) [A]I'll rejoice
+[D]All because of you Jesus
+I'll [F#m]shout my praises [E]loud
+(and) [A]You've been good [D]to me
+Oh [F#m]so good to [E]me
+[A]I've got joy
+{section: Interlude}
+| D | F#m | E | A | D | F#m | E |
+{section: Instrumental}
+| D | F#m | E |
+{section: Bridge}
+[A]I will enter His gates with
+[Bm]thanksgiving
+[A]I will enter His [D]courts with praise
+[A]With a grateful heart
+[Bm]I will bless His name
+[A]For He is good
+[D]He's faithful forever
+{cue: Repeat bridge 3x.}
+{section: Post-Chorus}
+[A]He is good (He is good)
+[Bm]He is good (He is good)
+[A]He is good (He is good)
+[D]He is good (Yes, He is)
+[F#m]He is good (Yes, He is)
+[E]He is good (He is good)
+{section: Channel}
+| A | D |
+{section: Chorus (stops)}
+{cue: N.C. throughout — band drops out, voices only.}
+I've got joy
+Here in your presence
+It feels like heaven now
+I'll rejoice (Jesus, You're the reason we sing)
+All because of you Jesus
+I'll shout my praises loud`,
+
+`{title: Never Once}
+{role: Solemn}
+{key: G}
+{capo: 0}
+{map: Intro - V1 - V2 - Br - C - V3 - Br - C x2 - Mid - C - C2 x2 - Outro}
+{section: Intro}
+| G / / / | D / / / | Em / / / | G / / / |
+{section: Verse 1}
+[G]Standing on this mountaintop
+[D]Looking just how far we've come
+[Em]Knowing that for every step
+[G]You were with us
+{section: Verse 2}
+[G]Kneeling on this battle ground
+[D]Seeing just how much You've done
+[Em]Knowing every victory
+[G]Was Your power in us
+{section: Verse 3}
+[G]Kneeling on this battle ground
+[D]Seeing just how much You've done
+[Em]Knowing every victory
+[G]Is Your power in us
+{section: Bridge}
+[C]Scars and struggles on the way
+[D]But with joy our hearts can say
+[G]Yes, our hearts can [C]say
+{section: Chorus}
+[G]Never once did we [D]ever walk a[G]lone
+[Em]Never once did you [D]leave us on our [G]own
+You are [C]faithful, [G]God, You are [Em]faith-[D]ful
+{section: Mid-section}
+[C]Scars and struggles on the way
+[D]But with joy our hearts can say
+[Em]Never once did we [D]ever walk alone
+[C]Carried by Your constant grace
+[D]Held within Your perfect peace
+[Em]Never once, no, we [D]never walk alone
+{section: Chorus 2}
+[G]Every step we are [D]breathing in Your [G]grace
+[Em]Evermore we'll be [D]breathing out Your [G]praise
+You are [C]faithful, [G]God, You are [Em]faith-[D]ful
+{section: Outro}
+You are [C]faithful, [G]God, You are [Em]faith-[D]ful`,
+
+`{title: The Glory of God}
+{role: Solemn}
+{key: C}
+{capo: 3}
+{map: V1 - C - V2 - C - Br - C - Br - Outro}
+{cue: Outro transitions straight into Fall Like Rain — do not stop.}
+{section: Verse 1}
+[C]Christ was one with [F]God, humbly [G]He came [C]low
+Not [Am]clinging to His [F]throne, though [G]equal with the [C]Father
+[C]Christ the servant [F]king, He gave [G]up every[C]thing[G]
+O[Am]bedient to [F]death, even [G]death on a [C]cross
+{section: Verse 2}
+[C]When He marched below, He triumphed all the more
+For [Am]death was over[Dm]thrown by the [G]victory of [C]Jesus
+On the [C]third, He [Dm]rose, as[G]cended to the [C]throne[G]
+And He [Am]reigns for[Dm]evermore, [G]Christ the Lord of [C]lords
+{section: Chorus}
+Now [C]glorified, [G]Lifted high
+He re[Am]ceived the name a[F]bove all names
+To [C]Christ we will [G]bow and [Am]every tongue will [F]testify
+[C]Jesus Christ is [G]Lord of all
+[Am]Jesus Christ is [F]Lord of all
+A[C]men, A[G]men, A - [F]men
+{section: Bridge}
+[Am]We have witnessed the glory of God
+[F]In His blood upon that cross
+[C]We have witnessed the glory of God
+in the [Em]Son, Hallelujah
+[Am]Death oh death now where is your sting
+[F]We shout praise where the victory is
+[C]Jesus silenced the grave now forever
+we'll [Em]sing, Halle[G]lujah
+{section: Outro}
+[C]Hallelu[G]jah, Halle[Am]lujah, Halle[F]lujah, Hallelujah
+[C]Hallelu[G]jah, Halle[Am]lujah, Halle[F]lujah, Hallelujah`,
+
+`{title: Fall Like Rain}
+{role: Solemn}
+{key: C}
+{capo: 3}
+{map: Intro - V1 - C - V2 - C - Int - Br - C}
+{cue: Comes in straight off the end of The Glory of God.}
+{section: Intro}
+| C | G | Am | F |
+{section: Verse 1}
+[C]God, I live to worship You
+[G]All my life I offer You
+[Am]Simple melodies of [F]sacrifice
+[C]Open hands and open heart
+[G]You're the only one I want
+[Am]Your presence is my [F]treasure, my delight
+{section: Verse 2}
+[C]One thing I ask, one thing I seek
+[G]So much more than anything
+To [Am]dwell within Your [C]house for [F]all my days
+[C]Knowing You is everything
+[G]So I let go of lesser things
+[Am]You alone are [G]worthy of my [F]praise
+[Am]Stir in me a [G]passion for Your [F]name
+{section: Chorus}
+[C]Fall like [G]rain
+[Am]Holy Spirit, [F]fall like rain
+[C]Holy Spirit, [G]have Your way
+[Am]Let Your glory fall down
+[F]Let Your glory fall down
+{section: Interlude}
+| C | Dm | C | F |
+{section: Bridge}
+[C]May I never lose the [Dm]wonder of Your presence
+[C]May I always stand in [F]awe of who You are
+[C]Oh, the beauty and the [Dm]gift of Your friendship
+[C]Is unlike anything [F]I've ever known`,
+
+`{title: Worthy Is The Lamb}
+{role: Communion}
+{key: G}
+{capo: 0}
+{map: V1 - V2 - C - Br}
+{section: Verse 1}
+[G]Thank you for the [C]cross [G]Lord
+[C]Thank you for the [D]price You [G]paid
+[D]Bearing all my [Em]sin and shame
+In [D]love You [C]came
+And [Am]gave a[G]mazing [D]grace
+{section: Verse 2}
+[G]Thank you for this [C]love [G]Lord
+[C]Thank you for the [D]nail pierced [G]hands
+[D]Washed me in Your [Em]cleansing flow
+Now [D]all I [C]know
+Your for[Am]giveness [G]and em[D]brace
+{section: Chorus}
+[G]Worthy is the [D]Lamb
+[Am]Seated [G]on the [C]throne
+[D]Crown You [G]now with many [C]crowns
+You [Am]reign vic[G]torious[D]
+[G]High and lifted [D]up
+[Am]Jesus [G]Son of [C]God
+The [D]Darling of [G]Heaven cruci[C]fied[D]
+[Am]Worthy [G]is the [C]Lamb
+[Am]Worthy [G]is the [D]Lamb
+{section: Bridge}
+[Am]Worthy [G]is the [C]Lamb
+[Am]Worthy [G]is the [D]Lamb`,
+
+`{title: Thanks And Praise}
+{role: Offering}
+{key: A}
+{capo: 1}
+{map: Intro - V1 - C - V2 - C x2 - Br x3 - C x2 - End - Outro}
+{section: Intro}
+| D \\\\\\ | A \\\\\\ | E \\\\\\ | A \\\\\\ | D/A \\\\\\ |
+{section: Verse 1}
+[A]We are here to[D/F#]gether, to lift our hearts as one
+[A]We're in our Father's [D]presence, His Spirit is with us
+{section: Verse 2}
+[A]And each and ev'ry [D/F#]morning, we'll tell of His great love
+[A]Of all His faithful [D]mercies, and all that He has done
+[A]For who can match His [D]kindness, and who can count His works?
+[A]Oh, let our praise con[D]tinue, 'til evening draws in close
+{section: Chorus}
+It is [D]good to lift the [A]name of the Lord our God
+It is [E]right to give Him [F#m]thanks and praise
+For His [D]heart is over[A]flowing with love for us
+And His [E]mercy we can [A]never contain
+{section: Bridge}
+[E]Glory, [D]honour, wisdom, [A]pow'r and strength
+To our [E]Saviour, [D]Jesus, worthy of [A]all praise
+{section: Ending}
+It is [E]right to give Him [A]thanks and praise
+It is [E]right to give Him [A]thanks and praise
+{section: Outro}
+| D \\\\\\ | A \\\\\\ | E \\\\\\ |  one strum on A`
+
+];
+
+/* Services (set lists). One line, rewritten wholesale on download. */
+let SETS=[];
+
+/* ============================================================
+   SHARED COPY (optional).
+   Paste the Worker address below and the book becomes shared: everyone
+   with the link reads the same thing, and only a signed-in admin can
+   change it. Leave it empty and the app behaves exactly as before —
+   published file plus local edits on this device.
+
+   The admin password is NEVER here. It lives as a secret on the Worker,
+   because this page is public and anyone can read its source.
+   ============================================================ */
+const SYNC_URL = "https://worshipbook.jlwwc06.workers.dev";
+const TOKEN_KEY = "worshipbook.token";
+let isAdmin=false, syncState="off", pushTimer=null;
+
+const syncOn=()=>!!SYNC_URL;
+function token(){ try{ return localStorage.getItem(TOKEN_KEY)||""; }catch(e){ return ""; } }
+function setToken(t){ try{ t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY); }catch(e){} }
+
+async function api(path,opts){
+  const o=Object.assign({headers:{}},opts||{});
+  o.headers["Content-Type"]="application/json";
+  const t=token(); if(t)o.headers["Authorization"]="Bearer "+t;
+  const r=await fetch(SYNC_URL.replace(/\/$/,"")+path,o);
+  const body=await r.json().catch(()=>({}));
+  return {ok:r.ok,status:r.status,body};
+}
+async function pullBook(){
+  if(!syncOn())return false;
+  try{
+    const r=await api("/book",{method:"GET"});
+    if(!r.ok||!r.body||r.body.empty||!Array.isArray(r.body.songs)||!r.body.songs.length){
+      syncState="ok";return false;
+    }
+    SONGS.length=0;r.body.songs.forEach(x=>SONGS.push(x));
+    SETS=Array.isArray(r.body.sets)?r.body.sets:[];
+    syncState="ok";
+    return true;
+  }catch(e){ syncState="bad"; return false; }   /* offline: keep whatever we have */
+}
+function pushBook(){
+  if(!syncOn()||!isAdmin)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(async()=>{
+    try{
+      const r=await api("/book",{method:"POST",body:JSON.stringify({songs:SONGS,sets:SETS})});
+      if(r.ok){syncState="ok";toast("Saved for everyone");}
+      else if(r.status===401){isAdmin=false;setToken("");syncState="bad";applyRole();toast("Signed out — sign in again to save");}
+      else{syncState="bad";toast(r.body.error||"Could not save");}
+    }catch(e){ syncState="bad"; toast("No connection — saved on this device only"); }
+    paintDirty();
+  },700);
+}
+function applyRole(){
+  /* with sync on, only a signed-in admin may change anything */
+  const canEdit = syncOn() ? isAdmin : (ALLOW_EDIT||location.hash.toLowerCase().includes("edit"));
+  document.body.dataset.readonly = canEdit ? "0" : "1";
+  const b=document.getElementById("signBtn");
+  if(b){
+    b.style.display = syncOn() ? "block" : "none";
+    b.textContent = isAdmin ? "Signed in as admin — sign out" : "Sign in as admin";
+    b.classList.toggle("on",isAdmin);
+  }
+}
+async function signIn(){
+  if(isAdmin){ setToken(""); isAdmin=false; applyRole(); paintDirty(); toast("Signed out"); return; }
+  const pw=prompt("Admin password");
+  if(pw===null)return;
+  try{
+    const r=await api("/login",{method:"POST",body:JSON.stringify({password:pw})});
+    if(r.ok&&r.body.token){
+      setToken(r.body.token); isAdmin=true; applyRole(); paintDirty();
+      toast("Signed in — your changes now save for everyone");
+    } else toast(r.body.error||"That password is not right.");
+  }catch(e){ toast("Could not reach the server"); }
+}
+
+/* ============================================================
+   KEEPING WORK — this device only.
+   Everything typed here is kept in the browser so closing the tab or
+   reloading no longer throws it away. It does NOT travel to anyone else:
+   other people, and your own other devices, still see the published file
+   until it is downloaded and uploaded to GitHub.
+   ============================================================ */
+const STORE="worshipbook.v1";
+const BASE_SONGS=SONGS.slice();
+const BASE_STAMP=(()=>{                     /* what the published file contains */
+  let h=5381; const t=BASE_SONGS.join("\u0000");
+  for(let i=0;i<t.length;i++)h=((h*33)^t.charCodeAt(i))>>>0;
+  return h.toString(36)+"."+BASE_SONGS.length;
+})();
+let localDirty=false, bootNote="";
+
+function saveLocal(){
+  try{
+    localStorage.setItem(STORE,JSON.stringify({stamp:BASE_STAMP,songs:SONGS,sets:SETS,at:Date.now()}));
+    localDirty=true;
+    paintDirty();
+  }catch(e){ /* private browsing, or storage full — carry on unsaved */ }
+  pushBook();                       /* and, if shared and signed in, for everyone */
+}
+function loadLocal(){
+  let raw=null;
+  try{ raw=localStorage.getItem(STORE); }catch(e){ return; }
+  if(!raw)return;
+  let d; try{ d=JSON.parse(raw); }catch(e){ return; }
+  /* The published file wins when it changes: the master copy is the point of
+     the whole thing. Keep the older work aside rather than dropping it. */
+  if(d.stamp!==BASE_STAMP){
+    try{ localStorage.setItem(STORE+".superseded",raw); localStorage.removeItem(STORE); }catch(e){}
+    bootNote="The book was republished — your earlier changes on this device were set aside.";
+    return;
+  }
+  if(Array.isArray(d.songs)&&d.songs.length){SONGS.length=0;d.songs.forEach(x=>SONGS.push(x));}
+  if(Array.isArray(d.sets))SETS=d.sets;
+  localDirty=true;
+}
+function clearLocal(){
+  if(!confirm("Throw away every change made on this device and go back to the published book?\n\nAnything not downloaded and published will be lost."))return;
+  try{ localStorage.removeItem(STORE); }catch(e){}
+  location.reload();
+}
+function paintDirty(){
+  const f=document.querySelector(".drawer footer");
+  if(!f)return;
+  const dot='<span class="syncdot" data-s="'+(syncOn()?syncState:"off")+'"></span>';
+  if(syncOn()){
+    f.innerHTML=dot+(isAdmin
+      ? 'Signed in. Changes save for <b>everyone on this link</b>.'
+      : (syncState==="bad"
+         ? 'Cannot reach the shared book — showing the last copy on this device.'
+         : 'Read only. Sign in as admin to make changes.'));
+  }else{
+    f.innerHTML=localDirty
+      ? 'Saved on this device. <b>Other people still see the published book</b> — press Download file and send it on. <button class="linkbtn" id="resetLocal">Discard my changes</button>'
+      : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.';
+  }
+  const r=document.getElementById("resetLocal");
+  if(r)r.onclick=clearLocal;
+}
+
+/* ---------- keep the map honest while you scroll ---------- */
+let ticking=false;
+window.addEventListener("scroll",()=>{
+  if(ticking)return;ticking=true;
+  requestAnimationFrame(()=>{spy();ticking=false;});
+},{passive:true});
+
+function spy(){
+  /* Collapsing the controls changes the sticky header's height, which shifts the
+     page under the reader. Hysteresis stops it flapping at the threshold, and
+     while auto-scroll is running we do not change it at all — a lurch mid-song
+     is worse than a slightly smaller screen. */
+  if(!playing){
+    const y=window.scrollY, on=document.body.dataset.compact==="1";
+    document.body.dataset.compact=(on?y>18:y>64)?"1":"0";
+  }
+  if(jumping)return;
+  const off=document.querySelector(".stickytop").getBoundingClientRect().height+10;
+  let live=null;
+  document.querySelectorAll(".sec").forEach(el=>{
+    if(el.getBoundingClientRect().top<=off)live=el.dataset.short;
+  });
+  if(live)syncStep(live);
+  paintSteps();
+}
+
+/* Scrolling alone cannot say WHICH chorus you are on, so only move when the
+   section stops matching the step we are already on, and then take the nearest
+   step forward that does match. That keeps repeats honest. */
+function syncStep(short){
+  const steps=mapSteps(currentSong());
+  if(!short||!steps.length)return;
+  if(steps[state.step]&&steps[state.step].short===short)return;
+  let found=-1;
+  for(let i=state.step+1;i<steps.length;i++)if(steps[i].short===short){found=i;break;}
+  if(found<0)for(let i=0;i<=state.step&&i<steps.length;i++)if(steps[i].short===short){found=i;break;}
+  if(found>=0){state.step=found;paintSteps();}
+}
+
+/* ============================================================
+   Editor — write, convert, preview, export
+   ============================================================ */
+const ed=document.getElementById("editor"),edText=document.getElementById("edText");
+const toastEl=document.getElementById("toast");
+function toast(msg){
+  toastEl.textContent=msg;toastEl.dataset.show="1";
+  setTimeout(()=>toastEl.dataset.show="0",1600);
+}
+document.getElementById("openEdit").onclick=()=>{closeDrawer();loadInto(SONGS[state.i]);ed.dataset.open="1";};
+document.getElementById("songEdit").onclick=()=>{
+  setPlaying(false);
+  loadInto(SONGS[state.i]);
+  ed.dataset.open="1";
+};
+document.getElementById("edClose").onclick=()=>{ed.dataset.open="0";};
+
+const F=id=>document.getElementById(id);
+function loadInto(t){
+  const meta={};const body=[];
+  t.split("\n").forEach(l=>{
+    const d=l.match(/^\{(title|role|key|capo|tempo|folder|map):\s*(.*)\}\s*$/);
+    if(d)meta[d[1]]=d[2].trim();else body.push(l);
+  });
+  F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";
+  F("fKey").value=meta.key||"C";F("fCapo").value=meta.capo||"0";
+  F("fTempo").value=meta.tempo||"";F("fMap").value=meta.map||"";
+  const sel=F("fSet");sel.innerHTML="";
+  const none=document.createElement("option");none.value="-1";none.textContent="— none —";
+  sel.appendChild(none);
+  SETS.forEach((st,i)=>{const o=document.createElement("option");
+    o.value=String(i);o.textContent=st.name;sel.appendChild(o);});
+  sel.value=String(activeSet);
+  edText.value=body.join("\n").trim();
+  refreshMapChips();
+}
+function assemble(){
+  const g=id=>F(id).value.trim();
+  return "{title: "+g("fTitle")+"}\n{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
+    "}\n{capo: "+(g("fCapo")||"0")+"}\n"+(g("fTempo")?"{tempo: "+g("fTempo")+"}\n":"")+
+    "{map: "+g("fMap")+"}\n"+edText.value.trim();
+}
+document.getElementById("edLoad").onclick=()=>loadInto(SONGS[state.i]);
+document.getElementById("edTemplate").onclick=()=>{
+  loadInto("{title: }\n{role: }\n{key: C}\n{capo: 0}\n{map: Intro - V1 - C - V2 - C - Br - C}\n"+
+`{section: Intro}
+| C | G | Am | F |
+{section: Verse 1}
+[C]Type the words with [G]chords in brackets
+{section: Chorus}
+[Am]Where the chord [F]changes, that's where the bracket goes`);
+};
+
+/* --- convert "chords above lyrics" into inline ChordPro --- */
+const CHORDISH=/^(\|+|N\.C\.?|\(?x\d+\)?|[\/\\|()-]+|[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*(?:sus\d|add\d|maj\d|no\d)?(?:\/[A-G][#b]?)?\)?)$/i;
+function isChordLine(s){
+  const t=s.trim().split(/\s+/).filter(Boolean);
+  if(!t.length)return false;
+  let real=0;
+  for(const x of t){if(!CHORDISH.test(x))return false;if(/[A-G]/.test(x))real++;}
+  return real>0;
+}
+function mergeLines(chordLine,lyricLine){
+  const pos=[];const re=/\S+/g;let m;
+  while((m=re.exec(chordLine))!==null)pos.push({col:m.index,ch:m[0]});
+  let out="",prev=0;
+  pos.forEach(p=>{
+    const col=Math.max(prev,Math.min(p.col,lyricLine.length));
+    out+=lyricLine.slice(prev,col)+"["+p.ch+"]";
+    prev=col;
+  });
+  return out+lyricLine.slice(prev);
+}
+document.getElementById("edConvert2")&&0;
+function convertText(raw){
+  const src=raw.replace(/\r/g,"").split("\n");
+  const out=[];const seen=[];let meta={title:"",role:"",capo:"",key:""};
+  for(let i=0;i<src.length;i++){
+    const line=src[i];
+    if(!line.trim()){out.push("");continue;}
+    if(/\/\//.test(line)){
+      const parts=line.split("//").map(s=>s.trim()).filter(Boolean);
+      meta.title=parts[0]||"";
+      meta.role=(parts[1]||"").replace(/\s*song\s*$/i,"");
+      const c=(parts[2]||"").match(/(\d+)/);
+      meta.capo=/open/i.test(parts[2]||"")?"0":(c?c[1]:"0");
+      continue;
+    }
+    const sec=line.trim().match(/^\[([^\]]+)\]$/);
+    if(sec&&!/^[A-G][#b]?(\s|$|m|maj|min|sus|dim|aug|add|\d|\/)/.test(sec[1])){
+      out.push(sec[1]);seen.push(sec[1]);continue;
+    }
+    const bare=line.trim().match(/^(intro|verse\s*\d*|pre[- ]?chorus|chorus(?:\s*\([^)]*\))?|bridge|interlude|instrumental|instrument|mid[- ]?section|post[- ]?chorus|channel|tag|refrain|outro|ending|end)\s*:?\s*$/i);
+    if(bare){out.push(line.trim().replace(/:$/,""));seen.push(line.trim().replace(/:$/,""));continue;}
+    if(isChordLine(line)){
+      const next=src[i+1];
+      if(next&&next.trim()&&!isChordLine(next)&&!/^\[[^\]]+\]$/.test(next.trim())){
+        out.push(mergeLines(line,next));i++;
+      }else{
+        out.push(line.trim().split(/\s+/).map(t=>/[A-G]/.test(t)?"["+t+"]":t).join(" "));
+      }
+      continue;
+    }
+    out.push(line.trim());
+  }
+  const body=out.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+  if(!meta.key){
+    const f=body.match(/\[([A-G][#b]?m?)/);
+    meta.key=f?f[1]:"C";
+  }
+  return {meta,body,map:[...new Set(seen)].map(s=>shortOf(s).toUpperCase()).join(" - ")};
+}
+
+/* paste anything — old chart, tab site, plain text — and it converts itself */
+edText.addEventListener("paste",e=>{
+  const raw=(e.clipboardData||window.clipboardData).getData("text");
+  if(!raw||!/\n/.test(raw))return;              // short paste, leave it alone
+  const looksOld=raw.split("\n").some(isChordLine);
+  if(!looksOld&&!/\/\//.test(raw))return;
+  e.preventDefault();
+  const r=convertText(raw);
+  if(r.meta.title&&!F("fTitle").value)F("fTitle").value=r.meta.title;
+  if(r.meta.role&&!F("fRole").value)F("fRole").value=r.meta.role;
+  if(r.meta.key)F("fKey").value=r.meta.key;
+  if(r.meta.capo!=="")F("fCapo").value=r.meta.capo;
+  if(r.map)F("fMap").value=r.map;
+  edText.value=r.body;
+  refreshMapChips();
+  toast("Converted — check the order below");
+});
+
+document.getElementById("edDelete").onclick=()=>{
+  const title=(F("fTitle").value||"").trim()||parseSong(SONGS[state.i]).meta.title||"this song";
+  const at=SONGS.findIndex(x=>(x.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
+  if(at<0){toast("That song is not in the book yet");return;}
+  const inSets=SETS.filter(st=>st.songs.includes(title)).map(st=>st.name);
+  /* say exactly what is about to go, and where else it is used */
+  const warn='Delete "'+title+'" from the book?\n\n'+
+    (inSets.length?'It is also in: '+inSets.join(', ')+'.\n\n':'')+
+    'This cannot be undone here. It only becomes permanent for everyone once the file is downloaded and published.';
+  if(!confirm(warn))return;
+  SONGS.splice(at,1);
+  SETS.forEach(st=>{const i=st.songs.indexOf(title);if(i>=0)st.songs.splice(i,1);});
+  if(!SONGS.length){SONGS.push("{title: New song}\n{key: C}\n{capo: 0}\n{map: V1}\n{section: Verse 1}\n");}
+  state.i=Math.max(0,Math.min(SONGS.length-1,state.i>at?state.i-1:state.i));
+  state.steps=0;state.step=0;state.pos=-1;
+  state.capo=parseInt(parseSong(SONGS[state.i]).meta.capo||"0",10)||0;
+  setPlaying(false);
+  ed.dataset.open="0";
+  saveLocal();
+  render();
+  toast("Deleted "+title);
+};
+
+document.getElementById("edSave").onclick=()=>{
+  const t=assemble();
+  const title=F("fTitle").value.trim();
+  if(!title){toast("Give the song a title first");return;}
+  const at=SONGS.findIndex(s=>(s.match(/\{title:\s*([^}]*)\}/)||[])[1]===title);
+  if(at>-1){SONGS[at]=t;state.i=at;toast("Updated "+title);}
+  else{SONGS.push(t);state.i=SONGS.length-1;toast("Added "+title);}
+  saveLocal();
+  const into=parseInt(F("fSet").value,10);
+  if(into>=0&&SETS[into]&&!SETS[into].songs.includes(title)){
+    SETS[into].songs.push(title);
+    toast("Added to "+SETS[into].name);
+  }
+  state.steps=0;state.step=0;
+  state.capo=parseInt(parseSong(t).meta.capo||"0",10)||0;
+  ed.dataset.open="0";render();
+};
+
+/* rebuild this whole page with the current song list baked in */
+function buildFile(){
+  const doc=document.documentElement.cloneNode(true);
+  ["song","list","roadmap"].forEach(id=>{const el=doc.querySelector("#"+id);if(el)el.innerHTML="";});
+  const t=doc.querySelector("#edText");if(t)t.textContent="";
+  doc.querySelectorAll(".fields input").forEach(i=>i.removeAttribute("value"));
+  const e=doc.querySelector("#editor");if(e)e.setAttribute("data-open","0");
+  const b=doc.querySelector("body");if(b)b.setAttribute("data-compact","0");
+  /* song text goes back inside backticks, so anything special must be escaped
+     or it is silently eaten on every publish */
+  const esc=s=>s.replace(/\\/g,"\\\\").replace(/`/g,"\\`")
+                .replace(/\$\{/g,"\\${").replace(/<\/script/gi,"<\\/script");
+  const block="const SONGS=[\n\n"+SONGS.map(s=>"`"+esc(s)+"`").join(",\n\n")+"\n\n];";
+  /* function form: a literal replacement would interpret $& and friends */
+  let out=doc.outerHTML.replace(/const SONGS=\[[\s\S]*?\n\];/,()=>block);
+  /* SETS lives on one line, so match to end of line — a service name may
+     legitimately contain a semicolon */
+  out=out.replace(/let SETS=.*\n/,()=>"let SETS="+JSON.stringify(SETS)+";\n");
+  return "<!DOCTYPE html>\n"+out;
+}
+document.getElementById("edDownload").onclick=()=>{
+  const blob=new Blob([buildFile()],{type:"text/html"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="index.html";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast("Downloaded — upload it to GitHub");
+};
+
+/* ---------- tap-to-build playing order ---------- */
+let mapArr=[],mapSel=-1;
+function readMap(){mapArr=F("fMap").value.trim().split(" - ").map(s=>s.trim()).filter(Boolean);}
+function writeMap(){F("fMap").value=mapArr.join(" - ");paintOrder();}
+function paintOrder(){
+  const row=document.getElementById("orderRow");
+  row.innerHTML="";
+  if(!mapArr.length){row.innerHTML='<span class="none">Nothing yet — tap a section above.</span>';return;}
+  mapArr.forEach((step,i)=>{
+    const b=document.createElement("button");
+    b.className="ochip";b.textContent=step;
+    b.dataset.sel=i===mapSel?"1":"0";
+    b.onclick=()=>{mapSel=(mapSel===i?-1:i);paintOrder();};
+    row.appendChild(b);
+  });
+}
+function sectionsInBody(){
+  const found=[];
+  parseSong("{title: x}\n"+edText.value).sections.forEach(s=>{
+    if(s.label&&!found.some(f=>f.label===s.label))found.push({label:s.label,short:shortOf(s.label).toUpperCase()});
+  });
+  return found;
+}
+function refreshMapChips(){
+  const box=document.getElementById("mapChips");
+  const found=sectionsInBody();
+  readMap();paintOrder();
+  box.innerHTML="";
+  if(!found.length){
+    box.innerHTML='<span class="none">Paste or type the song first — the sections will appear here to tap.</span>';
+    return;
+  }
+  found.forEach(f=>{
+    const b=document.createElement("button");
+    b.className="mchip";b.textContent=f.short;b.title=f.label;
+    b.onclick=()=>{
+      /* insert after the selected one, otherwise add at the end */
+      const at=mapSel>-1?mapSel+1:mapArr.length;
+      mapArr.splice(at,0,f.short);
+      mapSel=at;writeMap();
+    };
+    box.appendChild(b);
+  });
+}
+function reps(n){
+  if(mapSel<0){toast("Select one in the order first");return;}
+  const m=mapArr[mapSel].match(/^(.*?)\s*x(\d+)$/i);
+  const base=m?m[1]:mapArr[mapSel];
+  mapArr[mapSel]=n>1?base+" x"+n:base;
+  writeMap();
+}
+document.getElementById("mapX2").onclick=()=>{
+  if(mapSel<0){toast("Select one in the order first");return;}
+  const m=mapArr[mapSel].match(/^(.*?)\s*x(\d+)$/i);
+  reps(m?parseInt(m[2],10)+1:2);
+};
+document.getElementById("mapX1").onclick=()=>reps(1);
+document.getElementById("mapLeft").onclick=()=>{
+  if(mapSel<1)return;
+  [mapArr[mapSel-1],mapArr[mapSel]]=[mapArr[mapSel],mapArr[mapSel-1]];
+  mapSel--;writeMap();
+};
+document.getElementById("mapRight").onclick=()=>{
+  if(mapSel<0||mapSel>=mapArr.length-1)return;
+  [mapArr[mapSel+1],mapArr[mapSel]]=[mapArr[mapSel],mapArr[mapSel+1]];
+  mapSel++;writeMap();
+};
+document.getElementById("mapDel").onclick=()=>{
+  if(mapSel<0){toast("Select one in the order first");return;}
+  mapArr.splice(mapSel,1);mapSel=-1;writeMap();
+};
+document.getElementById("mapClear").onclick=()=>{mapArr=[];mapSel=-1;writeMap();};
+F("fMap").addEventListener("input",()=>{readMap();mapSel=-1;paintOrder();});
+let chipTimer=null;
+edText.addEventListener("input",()=>{
+  clearTimeout(chipTimer);chipTimer=setTimeout(refreshMapChips,400);
+});
+
+document.getElementById("signBtn").onclick=signIn;
+
+(async function boot(){
+  if(syncOn()){
+    isAdmin=!!token();
+    const got=await pullBook();
+    if(!got)loadLocal();                 /* offline or empty server: fall back */
+    if(isAdmin){                          /* confirm the token still stands */
+      try{const w=await api("/whoami",{method:"GET"});isAdmin=!!(w.ok&&w.body.admin);}
+      catch(e){}
+      if(!isAdmin)setToken("");
+    }
+  }else{
+    loadLocal();
+  }
+  applyRole();
+  state.capo=parseInt(parseSong(SONGS[0]).meta.capo||"0",10)||0;
+  showDwell();
+  render();
+  paintDirty();
+  if(bootNote)setTimeout(()=>toast(bootNote),600);
+})();
+</script>
+</body>
+</html>
