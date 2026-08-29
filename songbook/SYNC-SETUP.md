@@ -56,6 +56,21 @@ Two things about the password:
 Optionally add `ALLOWED_ORIGIN` = `https://dxk9academy.github.io` as a plain
 variable, so only the real site may talk to the Worker.
 
+## This church's setup — already done
+
+- Cloudflare account: the church Gmail
+- Worker: `worshipbook` → **https://worshipbook.jlwwc06.workers.dev**
+- KV namespace `WORSHIPBOOK`, bound to the Worker as `BOOK`
+- Secret `ADMIN_PASSWORD` set on the Worker
+- `SYNC_URL` in `index.html` points at the Worker
+
+Health check any time: open <https://worshipbook.jlwwc06.workers.dev/book>.
+`{"empty":true}` means it is running with nothing saved yet; a book full of
+songs means all is well.
+
+Steps 1-4 below are the record of how it was built, and what a rebuild would
+take. You do not need to repeat them.
+
 ## 4. Point the app at it
 
 In `songbook/index.html`, find near the top of the script:
