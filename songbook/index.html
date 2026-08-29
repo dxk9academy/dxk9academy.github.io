@@ -148,8 +148,11 @@ body[data-view="lyrics"] .line.chords-row{display:none}
 }
 .editor{
   position:fixed;inset:0;z-index:60;background:var(--ink);display:none;
-  flex-direction:column;padding-top:env(safe-area-inset-top)
+  flex-direction:column;padding-top:env(safe-area-inset-top);
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch
 }
+/* the top bar must stay reachable once the panel scrolls */
+.editor>.ed-bar:first-child{position:sticky;top:0;z-index:2;background:var(--ink)}
 .editor[data-open="1"]{display:flex}
 .ed-bar{
   display:flex;align-items:center;gap:8px;padding:10px 12px;
@@ -238,7 +241,8 @@ body[data-readonly="1"] .drawer footer{display:none}
   background:var(--ink);color:var(--text);
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   font-size:14px;line-height:1.5;padding:12px;
-  -webkit-text-size-adjust:100%
+  -webkit-text-size-adjust:100%;
+  min-height:45vh
 }
 .toast{
   position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
@@ -654,7 +658,12 @@ songEl.addEventListener("touchmove",e=>{
 },{passive:true});
 
 songEl.addEventListener("click",e=>{
-  if(document.body.dataset.edit!=="1")return;
+  if(document.body.dataset.edit!=="1"){
+    /* silence here reads as "the app is broken" — say what to press */
+    if(e.target.closest(".pair .c")&&document.body.dataset.readonly!=="1")
+      toast("Press \u270e at the top to change chords");
+    return;
+  }
   if(touchMoved){touchMoved=false;return;}
   const chordEl=e.target.closest(".pair .c");
   const wordEl=e.target.closest(".w");
