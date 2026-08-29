@@ -265,8 +265,11 @@ body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
   box-shadow:inset 4px 0 var(--section),0 0 0 1px rgba(95,168,160,.45);
   border-radius:6px
 }
-.line.active .l{color:#fff}
 .line.active .c{color:#FFD79A}
+/* karaoke fill: the words already sung are bright, the rest stay readable */
+.line.active .l{color:#EDE7DC}
+.line.active .wd{opacity:.5;transition:opacity .1s linear,color .1s linear}
+.line.active .wd.sung{opacity:1;color:#FFF6E2}
 .setbar{display:flex;gap:6px;margin-bottom:8px}
 .setbar select{
   flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;
@@ -963,13 +966,47 @@ function lineDwell(el){
   const n=el?el.textContent.trim().length:28;
   return base*Math.max(0.55,Math.min(1.8,n/28));
 }
+/* Split the sung line into words once, so the highlight can fill across it the
+   way a karaoke line does. Only the active line is split, and only outside edit
+   mode, which does its own splitting into tappable words. */
+function prepWords(line){
+  if(!line||line.dataset.wordy==="1"||line.classList.contains("chords-row"))return;
+  line.querySelectorAll(".pair .l").forEach(l=>{
+    const txt=l.textContent;
+    if(!txt)return;
+    l.textContent="";
+    (txt.match(/\s+|\S+/g)||[]).forEach(part=>{
+      const sp=document.createElement("span");
+      sp.textContent=part;
+      if(/\S/.test(part))sp.className="wd";
+      l.appendChild(sp);
+    });
+  });
+  line.dataset.wordy="1";
+}
+let words=[],sungCount=-1,lineStart=0,lineMs=0;
+function markWords(frac){
+  if(!words.length)return;
+  const n=Math.max(0,Math.min(words.length,Math.floor(frac*words.length)+1));
+  if(n===sungCount)return;
+  sungCount=n;
+  for(let i=0;i<words.length;i++)words[i].classList.toggle("sung",i<n);
+}
 function paintActive(){
   const prev=document.querySelector(".line.active");
   const el=songLines()[state.line];
   if(prev===el)return;
-  if(prev)prev.classList.remove("active");
+  if(prev){prev.classList.remove("active");
+    prev.querySelectorAll(".wd.sung").forEach(w=>w.classList.remove("sung"));}
   if(el){
     el.classList.add("active");
+    if(document.body.dataset.edit!=="1")prepWords(el);
+    words=[...el.querySelectorAll(".wd")];
+    sungCount=-1;
+    lineStart=performance.now();
+    lineMs=lineDwell(el)*1000;
+    nextAt=lineStart+lineMs;
+    markWords(0);
     keepInBand(el);
     const sec=el.closest(".sec");
     if(sec)syncStep(sec.dataset.short);
@@ -1000,10 +1037,14 @@ function setPlaying(on){
   btn.textContent=on?"\u2759\u2759 Pause":"\u25b6 Play";
   btn.classList.toggle("go",!on);
   if(on){
-    if(state.line<0||state.line>=songLines().length)
-      state.line=lineAt(document.querySelector(".stickytop").getBoundingClientRect().height+10);
+    /* Press play and the song starts at its first line. Starting from whatever
+       was under the header meant scrolling to read ahead silently moved the
+       starting point. To begin elsewhere, tap that line first. */
+    if(state.line<0||state.line>=songLines().length){
+      state.line=0;
+      window.scrollTo({top:0,behavior:"auto"});
+    }
     paintActive();
-    nextAt=performance.now()+lineDwell(songLines()[state.line])*1000;
     rafId=requestAnimationFrame(tick);
   }else{
     if(rafId)cancelAnimationFrame(rafId);
@@ -1012,11 +1053,11 @@ function setPlaying(on){
 }
 function tick(t){
   if(!playing){rafId=0;return;}
+  if(lineMs>0)markWords((t-lineStart)/lineMs);
   if(t>=nextAt){
     if(state.line>=songLines().length-1){setPlaying(false);toast("End of song");return;}
     state.line++;
-    paintActive();
-    nextAt=t+lineDwell(songLines()[state.line])*1000;
+    paintActive();          /* sets lineStart, lineMs and nextAt for the new line */
   }
   rafId=requestAnimationFrame(tick);
 }
@@ -1039,7 +1080,6 @@ songEl.addEventListener("click",e=>{
   state.line=i;
   document.body.classList.add("playing");   /* so the highlight shows even paused */
   paintActive();
-  if(playing)nextAt=performance.now()+lineDwell(el)*1000;
 });
 
 /* a drag means "I am reading somewhere else" — stop and let them lead */

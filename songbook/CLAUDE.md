@@ -115,6 +115,14 @@ is sung; it is not a side effect of scroll position.
 - **The page settles.** `keepInBand` scrolls only when the sung line leaves the
   18%–62% band, then puts it back at 30%. A page that moves under every line is
   harder to read than one that holds still.
+- **Word by word.** `prepWords` splits the active line into `.wd` spans once,
+  and `markWords` fills them across the line as its dwell elapses — the sung
+  part is bright, the rest stays readable. Only the active line is split, and
+  never in edit mode, which does its own splitting into tappable `.w` spans.
+  `buildFile` clears `#song`, so none of this reaches the exported file.
+- **Play starts at the song's first line**, and scrolls there. It used to start
+  at whatever sat under the header, which meant scrolling to read ahead quietly
+  moved the starting point. To begin elsewhere, tap that line first.
 - **Tap any line** to make it the current one. That is the fastest way back in
   sync when the leader repeats a chorus.
 - A drag pauses; a tap does not. `jumping` guards the handlers so the app's own
