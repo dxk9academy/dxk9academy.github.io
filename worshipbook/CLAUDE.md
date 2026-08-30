@@ -99,6 +99,36 @@ again on `visibilitychange`.
 selector, so a class rule setting `display` ties on specificity and wins on
 source order — without that line the banner covers the header permanently.
 
+## Copyright, licensing and consent
+
+`terms.html` is the Terms of Service and takedown policy, linked from the set
+list footer and from the first-run consent card. It is deliberately indexable
+even though the book is not: a takedown policy nobody can find is no policy.
+
+- **First-run consent.** `showConsent` blocks until the box is ticked, recorded
+  per device under `worshipbook.v1.agreed`. It records that someone saw the
+  terms, not who they are.
+- **`SETTINGS`** holds `{ccli, church}`, saved and synced beside the songs so
+  every device shows the same attribution. Entered through **Church settings**
+  in the set list.
+- **`paintAttrib`** writes the line under every chart: title, author, "Used by
+  Permission", and the CCLI number — or a prompt to add one when it is blank.
+  It only prints what the song actually carries; inventing a publisher would be
+  worse than omitting it.
+- **`{author:}`** is part of the song format and has a field in the editor.
+
+`const agreedKey=()=>STORE+".agreed"` is a function on purpose. That block sits
+above where `STORE` is declared, and reading it eagerly hit the temporal dead
+zone and killed the whole script.
+
+### The part code cannot fix
+
+The repository still ships 13 real songs inside `index.html`, and git history
+holds them across 15 commits. Removing them from the working file does not
+remove them from history. Whether the "empty container" position holds is a
+question for the church and, if it matters, a lawyer — not something this file
+can settle.
+
 ## Copyright
 
 The book holds copyrighted lyrics and chord charts on a publicly reachable URL.

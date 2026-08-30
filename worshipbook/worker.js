@@ -65,10 +65,10 @@ export default {
         if (prev && prev.songs && prev.songs.length >= 3 && body.songs.length === 0) {
           return json({ ok: false, error: "Refusing to save an empty book." }, cors, 409);
         }
-        const next = { songs: body.songs, sets: body.sets || [], at: Date.now() };
+        const next = { songs: body.songs, sets: body.sets || [], settings: body.settings || {}, at: Date.now() };
         if (prev) {
           const hist = JSON.parse((await env.BOOK.get("history")) || "[]");
-          hist.unshift({ at: prev.at || 0, songs: prev.songs, sets: prev.sets || [] });
+          hist.unshift({ at: prev.at || 0, songs: prev.songs, sets: prev.sets || [], settings: prev.settings || {} });
           await env.BOOK.put("history", JSON.stringify(hist.slice(0, HISTORY)));
         }
         await env.BOOK.put("book", JSON.stringify(next));
@@ -91,7 +91,7 @@ export default {
         const hist = JSON.parse((await env.BOOK.get("history")) || "[]");
         const pick = hist[i | 0];
         if (!pick) return json({ ok: false, error: "No such version." }, cors, 404);
-        await env.BOOK.put("book", JSON.stringify({ songs: pick.songs, sets: pick.sets, at: Date.now() }));
+        await env.BOOK.put("book", JSON.stringify({ songs: pick.songs, sets: pick.sets, settings: pick.settings || {}, at: Date.now() }));
         return json({ ok: true }, cors);
       }
 

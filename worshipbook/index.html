@@ -32,6 +32,36 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 /* [hidden] is only an attribute selector, so a class rule with display
    beats it on source order. Say it explicitly or the bar never hides. */
+/* the copyright line under every chart */
+.attrib{
+  max-width:900px;margin:0 auto;padding:14px 14px 26px;
+  color:var(--muted);font-size:.7em;letter-spacing:.03em;line-height:1.6;
+  border-top:1px solid var(--line)
+}
+body[data-home="1"] .attrib{display:none}
+
+/* first-run consent */
+.consent[hidden]{display:none}
+.consent{
+  position:fixed;inset:0;z-index:95;background:rgba(14,20,32,.97);
+  display:grid;place-items:center;padding:20px;overflow-y:auto
+}
+.consent-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:20px;max-width:34rem;width:100%
+}
+.consent-card h2{margin:0 0 10px;font-size:1.25em}
+.consent-card p{font-size:.88em;color:var(--muted);line-height:1.6;margin:0 0 12px}
+.consent-card p b{color:var(--text)}
+.agree{
+  display:flex;gap:10px;align-items:flex-start;font-size:.86em;line-height:1.5;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+  padding:13px;margin:0 0 14px
+}
+.agree input{width:20px;height:20px;flex:0 0 20px;margin:1px 0 0;accent-color:var(--chord)}
+.agree a{color:var(--chord)}
+.bigbtn:disabled{opacity:.4}
+
 .updatebar[hidden]{display:none}
 .updatebar{
   position:fixed;left:0;right:0;top:0;z-index:90;display:flex;align-items:center;gap:10px;
@@ -249,6 +279,7 @@ body[data-view="lyrics"] .line.chords-row{display:none}
 .item .m{font-size:.72em;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
 .drawer footer{padding:12px 16px;border-top:1px solid var(--line);font-size:.72em;color:var(--muted);line-height:1.5}
 .drawer footer b{color:var(--text)}
+.termslink{color:var(--section);font-weight:700;text-decoration:underline}
 .linkbtn{
   display:inline;padding:0;margin-top:6px;background:none;border:0;
   color:var(--cue);font-size:1em;font-weight:700;text-decoration:underline
@@ -457,6 +488,7 @@ body[data-setmode="set"] .addsongs{display:block}
   <div class="list" id="list"></div>
   <button class="edit-open" id="openEdit">＋ Add or edit a song</button>
   <button class="signin" id="signBtn">Sign in as admin</button>
+  <button class="signin" id="ccliBtn">Church settings</button>
   <footer>Edits live on your phone until you download the file and upload it to GitHub. That upload is what everyone else sees.</footer>
 </nav>
 
@@ -475,6 +507,7 @@ body[data-setmode="set"] .addsongs{display:block}
   <div class="fields">
     <label class="wide">Song title<input id="fTitle" placeholder="Never Once"></label>
     <label>Role<input id="fRole" placeholder="Solemn"></label>
+    <label class="wide">Author / publisher<input id="fAuthor" placeholder="Who wrote it — for the copyright line"></label>
     <label>Key<input id="fKey" placeholder="G"></label>
     <label>Capo<input id="fCapo" placeholder="0" inputmode="numeric"></label>
     <label>Tempo<input id="fTempo" placeholder="72" inputmode="numeric"></label>
@@ -504,6 +537,20 @@ body[data-setmode="set"] .addsongs{display:block}
   <button class="pb go" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
   <button class="pb" id="pbNext" aria-label="Next section">Next ›</button>
   <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
+</div>
+
+<div class="consent" id="consent" hidden>
+  <div class="consent-card">
+    <h2>Before you start</h2>
+    <p>The Worship Book ships empty. Any songs in it were added by someone at your church,
+       and <b>your church is responsible for holding the licences</b> that cover them —
+       CCLI or otherwise.</p>
+    <p>Chord charts are not always covered by the same licence as projected lyrics. If you
+       are not sure, check before adding songs.</p>
+    <label class="agree"><input type="checkbox" id="agreeBox">
+      I have read and accept the <a href="terms.html" target="_blank" rel="noopener">Terms of Service and Copyright policy</a>.</label>
+    <button class="bigbtn" id="agreeGo" disabled>Continue</button>
+  </div>
 </div>
 
 <div class="updatebar" id="updatebar" hidden>
@@ -558,6 +605,7 @@ body[data-setmode="set"] .addsongs{display:block}
 <div class="roadmap" id="roadmap"></div>
 </div>
 <main id="song"></main>
+<p class="attrib" id="attrib"></p>
 
 <script>
 /* ============================================================
@@ -798,11 +846,12 @@ function render(){
   }else window.scrollTo(0,0);
   PLAY=buildPlay();paintedPos=-1;
   paintSteps();
+  paintAttrib();
   buildList();
 }
 
 /* ---------- turn the parsed song back into text ---------- */
-const ORDER=["title","role","key","capo","tempo","folder","map"];
+const ORDER=["title","author","role","key","capo","tempo","folder","map"];
 function serialize(song){
   const out=[];
   ORDER.forEach(k=>{if(song.meta[k]!==undefined)out.push("{"+k+": "+song.meta[k]+"}");});
@@ -1178,6 +1227,34 @@ function renderHome(){
   document.getElementById("hSets").onclick=()=>{hideHome();openDrawer();};
 }
 
+/* The copyright line that belongs under a chart. Shows what the song
+   actually carries — a made-up publisher would be worse than none — and
+   the church's own CCLI number when it has entered one. */
+function paintAttrib(){
+  const el=document.getElementById("attrib");
+  if(!el)return;
+  const m=currentSong().meta;
+  const bits=[];
+  if(m.title)bits.push(m.title);
+  if(m.author)bits.push(m.author);
+  bits.push("Used by Permission");
+  bits.push(SETTINGS.ccli?("CCLI Licence #"+SETTINGS.ccli)
+                         :"CCLI Licence # not set \u2014 add it in Church settings");
+  el.textContent=bits.join("  |  ");
+}
+
+function askCcli(){
+  const cur=SETTINGS.ccli||"";
+  const v=prompt("Your church's CCLI licence number.\n\nIt is printed on your licence and appears "+
+                 "under every song. Leave blank to remove it.",cur);
+  if(v===null)return;
+  SETTINGS.ccli=v.trim();
+  const n=prompt("Church name, as it should read (optional).",SETTINGS.church||"");
+  if(n!==null)SETTINGS.church=n.trim();
+  saveLocal();paintAttrib();renderHome();
+  toast(SETTINGS.ccli?"CCLI number saved":"CCLI number cleared");
+}
+
 /* the last song opened, remembered per device */
 function lastOpened(){
   try{const v=parseInt(localStorage.getItem(STORE+".last"),10);
@@ -1387,6 +1464,28 @@ function closeDrawer(){drawer.dataset.open="0";scrim.dataset.open="0";}
 document.getElementById("menu").onclick=openDrawer;
 document.getElementById("find").addEventListener("input",buildList);
 document.getElementById("homeBtn").onclick=showHome;
+document.getElementById("ccliBtn").onclick=()=>{closeDrawer();askCcli();};
+
+/* Terms have to be accepted once per device before anything can be added.
+   Kept local: it records that this person saw it, not who they are. */
+/* Read lazily: this block sits above where STORE is declared, and touching
+   it here would hit the temporal dead zone and take the whole script down. */
+const agreedKey=()=>STORE+".agreed";
+function needConsent(){
+  try{return localStorage.getItem(agreedKey())!=="1";}catch(e){return false;}
+}
+function showConsent(){
+  const box=document.getElementById("consent");
+  const chk=document.getElementById("agreeBox");
+  const go=document.getElementById("agreeGo");
+  box.hidden=false;
+  chk.onchange=()=>{go.disabled=!chk.checked;};
+  go.onclick=()=>{
+    if(!chk.checked)return;
+    try{localStorage.setItem(agreedKey(),"1");}catch(e){}
+    box.hidden=true;
+  };
+}
 
 /* ============================================================
    Surviving a real service: the wifi drops, and phones sleep.
@@ -1993,6 +2092,11 @@ It is [E]right to give Him [A]thanks and praise
 /* Services (set lists). One line, rewritten wholesale on download. */
 let SETS=[];
 
+/* Church settings — the CCLI licence number and church name. One line,
+   rewritten on download, and shared through the Worker like the songs so
+   every device shows the same attribution. */
+let SETTINGS={ccli:"",church:""};
+
 /* ============================================================
    SHARED COPY (optional).
    Paste the Worker address below and the book becomes shared: everyone
@@ -2028,6 +2132,7 @@ async function pullBook(){
     }
     SONGS.length=0;r.body.songs.forEach(x=>SONGS.push(x));
     SETS=Array.isArray(r.body.sets)?r.body.sets:[];
+    if(r.body.settings&&typeof r.body.settings==="object")SETTINGS=Object.assign(SETTINGS,r.body.settings);
     syncState="ok";
     return true;
   }catch(e){ syncState="bad"; return false; }   /* offline: keep whatever we have */
@@ -2037,7 +2142,7 @@ function pushBook(){
   clearTimeout(pushTimer);
   pushTimer=setTimeout(async()=>{
     try{
-      const r=await api("/book",{method:"POST",body:JSON.stringify({songs:SONGS,sets:SETS})});
+      const r=await api("/book",{method:"POST",body:JSON.stringify({songs:SONGS,sets:SETS,settings:SETTINGS})});
       if(r.ok){syncState="ok";toast("Saved for everyone");}
       else if(r.status===401){isAdmin=false;setToken("");syncState="bad";applyRole();toast("Signed out — sign in again to save");}
       else{syncState="bad";toast(r.body.error||"Could not save");}
@@ -2087,7 +2192,7 @@ let localDirty=false, bootNote="";
 
 function saveLocal(){
   try{
-    localStorage.setItem(STORE,JSON.stringify({stamp:BASE_STAMP,songs:SONGS,sets:SETS,at:Date.now()}));
+    localStorage.setItem(STORE,JSON.stringify({stamp:BASE_STAMP,songs:SONGS,sets:SETS,settings:SETTINGS,at:Date.now()}));
     localDirty=true;
     paintDirty();
   }catch(e){ /* private browsing, or storage full — carry on unsaved */ }
@@ -2107,6 +2212,7 @@ function loadLocal(){
   }
   if(Array.isArray(d.songs)&&d.songs.length){SONGS.length=0;d.songs.forEach(x=>SONGS.push(x));}
   if(Array.isArray(d.sets))SETS=d.sets;
+  if(d.settings&&typeof d.settings==="object")SETTINGS=Object.assign(SETTINGS,d.settings);
   localDirty=true;
 }
 function clearLocal(){
@@ -2118,16 +2224,17 @@ function paintDirty(){
   const f=document.querySelector(".drawer footer");
   if(!f)return;
   const dot='<span class="syncdot" data-s="'+(syncOn()?syncState:"off")+'"></span>';
+  const terms=' <a href="terms.html" target="_blank" rel="noopener" class="termslink">Terms &amp; copyright</a>';
   if(syncOn()){
-    f.innerHTML=dot+(isAdmin
+    f.innerHTML=terms+"<br>"+dot+(isAdmin
       ? 'Signed in. Changes save for <b>everyone on this link</b>.'
       : (syncState==="bad"
          ? 'Cannot reach the shared book — showing the last copy on this device.'
          : 'Read only. Sign in as admin to make changes.'));
   }else{
-    f.innerHTML=localDirty
+    f.innerHTML=terms+"<br>"+(localDirty
       ? 'Saved on this device. <b>Other people still see the published book</b> — press Download file and send it on. <button class="linkbtn" id="resetLocal">Discard my changes</button>'
-      : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.';
+      : 'Changes are kept on this device. To reach everyone else, download the file and upload it to GitHub.');
   }
   const r=document.getElementById("resetLocal");
   if(r)r.onclick=clearLocal;
@@ -2193,10 +2300,10 @@ const F=id=>document.getElementById(id);
 function loadInto(t){
   const meta={};const body=[];
   t.split("\n").forEach(l=>{
-    const d=l.match(/^\{(title|role|key|capo|tempo|folder|map):\s*(.*)\}\s*$/);
+    const d=l.match(/^\{(title|author|role|key|capo|tempo|folder|map):\s*(.*)\}\s*$/);
     if(d)meta[d[1]]=d[2].trim();else body.push(l);
   });
-  F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";
+  F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";F("fAuthor").value=meta.author||"";
   F("fKey").value=meta.key||"C";F("fCapo").value=meta.capo||"0";
   F("fTempo").value=meta.tempo||"";F("fMap").value=meta.map||"";
   const sel=F("fSet");sel.innerHTML="";
@@ -2210,7 +2317,8 @@ function loadInto(t){
 }
 function assemble(){
   const g=id=>F(id).value.trim();
-  return "{title: "+g("fTitle")+"}\n{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
+  return "{title: "+g("fTitle")+"}\n"+(g("fAuthor")?"{author: "+g("fAuthor")+"}\n":"")+
+    "{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
     "}\n{capo: "+(g("fCapo")||"0")+"}\n"+(g("fTempo")?"{tempo: "+g("fTempo")+"}\n":"")+
     "{map: "+g("fMap")+"}\n"+edText.value.trim();
 }
@@ -2363,6 +2471,7 @@ function buildFile(){
   /* SETS lives on one line, so match to end of line — a service name may
      legitimately contain a semicolon */
   out=out.replace(/let SETS=.*\n/,()=>"let SETS="+JSON.stringify(SETS)+";\n");
+  out=out.replace(/let SETTINGS=.*\n/,()=>"let SETTINGS="+JSON.stringify(SETTINGS)+";\n");
   return "<!DOCTYPE html>\n"+out;
 }
 document.getElementById("edDownload").onclick=()=>{
@@ -2473,6 +2582,7 @@ document.getElementById("signBtn").onclick=signIn;
   render();
   paintDirty();
   showHome();          /* land on the home screen, not on whichever song is first */
+  if(needConsent())showConsent();
   if(bootNote)setTimeout(()=>toast(bootNote),600);
 })();
 </script>
