@@ -59,9 +59,20 @@ export default {
         if (!body || !Array.isArray(body.songs)) {
           return json({ ok: false, error: "Expected { songs: [...], sets: [...] }." }, cors, 400);
         }
-        /* refuse to wipe the book by accident */
         const prevRaw = await env.BOOK.get("book");
         const prev = prevRaw ? JSON.parse(prevRaw) : null;
+
+        /* Two people editing is the classic way a team loses an afternoon.
+           A save carries the version it was based on; if the book has moved on
+           since, refuse rather than overwrite, and hand back what is there so
+           the app can offer a real choice. */
+        if (prev && prev.at && body.baseAt && body.baseAt !== prev.at && !body.force) {
+          return json({
+            ok: false, conflict: true, serverAt: prev.at,
+            songs: prev.songs, sets: prev.sets || [], settings: prev.settings || {},
+            error: "Someone else saved since you loaded this."
+          }, cors, 409);
+        }
         if (prev && prev.songs && prev.songs.length >= 3 && body.songs.length === 0) {
           return json({ ok: false, error: "Refusing to save an empty book." }, cors, 409);
         }

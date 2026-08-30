@@ -178,6 +178,26 @@ the section it points at.
 Anything that navigates must work on step indexes, never on section names.
 Matching by name is what made every chorus chip light up at once.
 
+## Two people editing
+
+Every save carries `baseAt`, the version it was built on. If the book has moved
+on since, the Worker returns **409** with its current copy rather than accepting
+the write. Last-write-wins silently is the classic way a team loses an
+afternoon.
+
+The app never picks a winner. It says who saved, when, and how many songs each
+side has, then offers:
+
+- **take theirs** — replaces the local copy and rebases
+- **replace theirs with mine** — rebases to the server version and re-sends with
+  `force`, a deliberate act rather than an accident
+
+Either way the overwritten version stays in the Worker's history, so a wrong
+choice is recoverable rather than final.
+
+`force` exists only on that path. A save that has not been refused never sets
+it, so a stale device cannot quietly clobber a newer book.
+
 ## Go to — the live jump
 
 `{map:}` is the **plan**. A leader calls "one more chorus" or "back to the

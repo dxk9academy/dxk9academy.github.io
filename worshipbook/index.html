@@ -2240,6 +2240,8 @@ let SETTINGS={ccli:"",church:""};
 const SYNC_URL = "https://worshipbook.jlwwc06.workers.dev";
 const TOKEN_KEY = "worshipbook.token";
 let isAdmin=false, syncState="off", pushTimer=null;
+/* the version of the book this device is working from */
+let bookAt=0;
 
 const syncOn=()=>!!SYNC_URL;
 function token(){ try{ return localStorage.getItem(TOKEN_KEY)||""; }catch(e){ return ""; } }
@@ -2263,23 +2265,55 @@ async function pullBook(){
     SONGS.length=0;r.body.songs.forEach(x=>SONGS.push(x));
     SETS=Array.isArray(r.body.sets)?r.body.sets:[];
     if(r.body.settings&&typeof r.body.settings==="object")SETTINGS=Object.assign(SETTINGS,r.body.settings);
+    bookAt=r.body.at||0;
     syncState="ok";
     return true;
   }catch(e){ syncState="bad"; return false; }   /* offline: keep whatever we have */
 }
-function pushBook(){
+function pushBook(force){
   if(!syncOn()||!isAdmin)return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(async()=>{
     try{
-      const r=await api("/book",{method:"POST",body:JSON.stringify({songs:SONGS,sets:SETS,settings:SETTINGS})});
-      if(r.ok){syncState="ok";toast("Saved for everyone");}
+      const r=await api("/book",{method:"POST",
+        body:JSON.stringify({songs:SONGS,sets:SETS,settings:SETTINGS,baseAt:bookAt,force:force===true})});
+      if(r.ok){bookAt=r.body.at||bookAt;syncState="ok";toast("Saved for everyone");}
+      else if(r.status===409&&r.body.conflict){syncState="ok";handleConflict(r.body);}
       else if(r.status===401){isAdmin=false;setToken("");syncState="bad";applyRole();toast("Signed out — sign in again to save");}
       else{syncState="bad";toast(r.body.error||"Could not save");}
     }catch(e){ syncState="bad"; toast("No connection — saved on this device only"); }
     paintDirty();
   },700);
 }
+/* Someone else saved while this device was working. Never silently pick a
+   winner — say what happened and let the person decide, with their own work
+   still in front of them either way. */
+function handleConflict(srv){
+  const theirs=(srv.songs||[]).length, mine=SONGS.length;
+  const when=srv.serverAt?new Date(srv.serverAt).toLocaleTimeString():"just now";
+  const keepMine=confirm(
+    "Someone else saved the book at "+when+".\n\n"+
+    "Theirs: "+theirs+" songs.  Yours: "+mine+" songs.\n\n"+
+    "OK    — replace theirs with your version\n"+
+    "Cancel — take theirs and lose your unsaved changes"
+  );
+  if(keepMine){
+    bookAt=srv.serverAt||bookAt;      /* rebase, then overwrite deliberately */
+    pushBook(true);
+    return;
+  }
+  if(Array.isArray(srv.songs)&&srv.songs.length){
+    SONGS.length=0;srv.songs.forEach(x=>SONGS.push(x));
+    SETS=Array.isArray(srv.sets)?srv.sets:[];
+    if(srv.settings)SETTINGS=Object.assign(SETTINGS,srv.settings);
+    bookAt=srv.serverAt||0;
+    try{localStorage.setItem(STORE,JSON.stringify({stamp:BASE_STAMP,songs:SONGS,sets:SETS,settings:SETTINGS,at:Date.now()}));}catch(e){}
+    state.i=Math.min(state.i,SONGS.length-1);
+    state.pos=-1;render();renderHome();
+    toast("Loaded their version");
+  }
+}
+
 function applyRole(){
   /* with sync on, only a signed-in admin may change anything */
   const canEdit = syncOn() ? isAdmin : (ALLOW_EDIT||location.hash.toLowerCase().includes("edit"));
