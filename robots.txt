@@ -1,0 +1,9 @@
+# The Worship Book holds copyrighted chord charts and lyrics. It is for the
+# worship team, not for search. Keeping it out of results does not change who
+# can reach it with the link — see SYNC-SETUP.md.
+User-agent: *
+Disallow: /worshipbook/
+Disallow: /songbook/
+
+# The rest of the site is ordinary and may be indexed.
+Allow: /

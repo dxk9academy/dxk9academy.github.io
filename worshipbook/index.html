@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Worship Book</title>
 <meta name="theme-color" content="#0E1420">
+<meta name="robots" content="noindex, nofollow">
 <style>
 :root{
   --ink:#0E1420;
@@ -28,6 +29,19 @@ body{
   overscroll-behavior-y:contain;
 }
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* [hidden] is only an attribute selector, so a class rule with display
+   beats it on source order. Say it explicitly or the bar never hides. */
+.updatebar[hidden]{display:none}
+.updatebar{
+  position:fixed;left:0;right:0;top:0;z-index:90;display:flex;align-items:center;gap:10px;
+  background:var(--section);color:#08201D;font-size:.82em;font-weight:700;
+  padding:calc(9px + env(safe-area-inset-top)) 14px 9px
+}
+.updatebar button{
+  margin-left:auto;background:#08201D;color:#EDE7DC;border-radius:8px;
+  padding:7px 13px;font-weight:800;font-size:.95em
+}
 
 /* ============================================================
    HOME — what a musician wants in the first two seconds:
@@ -490,6 +504,11 @@ body[data-setmode="set"] .addsongs{display:block}
   <button class="pb go" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
   <button class="pb" id="pbNext" aria-label="Next section">Next ›</button>
   <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
+</div>
+
+<div class="updatebar" id="updatebar" hidden>
+  <span>A newer version is ready.</span>
+  <button id="updateNow">Update</button>
 </div>
 
 <div class="home" id="home"></div>
@@ -1074,8 +1093,11 @@ document.getElementById("setAdd").onclick=()=>{
    ============================================================ */
 const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-function showHome(){document.body.dataset.home="1";setPlaying(false);renderHome();window.scrollTo(0,0);}
-function hideHome(){document.body.dataset.home="0";}
+function showHome(){
+  document.body.dataset.home="1";setPlaying(false);keepAwake(false);
+  renderHome();window.scrollTo(0,0);
+}
+function hideHome(){document.body.dataset.home="0";keepAwake(true);}
 
 /* the service to lead with: the one open, else the newest with songs in it */
 function featuredSet(){
@@ -1365,6 +1387,55 @@ function closeDrawer(){drawer.dataset.open="0";scrim.dataset.open="0";}
 document.getElementById("menu").onclick=openDrawer;
 document.getElementById("find").addEventListener("input",buildList);
 document.getElementById("homeBtn").onclick=showHome;
+
+/* ============================================================
+   Surviving a real service: the wifi drops, and phones sleep.
+   ============================================================ */
+
+/* Offline. Needs its own file — browsers will not register a service
+   worker from a blob or an inline script, so this is a deliberate
+   exception to the single-file rule, like the sync Worker before it. */
+if("serviceWorker" in navigator){
+  addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      reg.addEventListener("updatefound",()=>{
+        const fresh=reg.installing;
+        if(!fresh)return;
+        fresh.addEventListener("statechange",()=>{
+          /* only tell the user when this REPLACES a running copy; the very
+             first install is not an update and a banner would confuse */
+          if(fresh.state==="installed"&&navigator.serviceWorker.controller){
+            const bar=document.getElementById("updatebar");
+            bar.hidden=false;
+            document.getElementById("updateNow").onclick=()=>{
+              fresh.postMessage("skip-waiting");
+              location.reload();
+            };
+          }
+        });
+      });
+    }).catch(()=>{});   /* no https, or blocked — the app still works */
+  });
+}
+
+/* Keep the screen on while a chart is open. A phone that sleeps mid-song
+   with both hands on an instrument is the reason people go back to paper. */
+let wakeLock=null;
+async function keepAwake(on){
+  try{
+    if(on){
+      if(!("wakeLock" in navigator)||wakeLock)return;
+      wakeLock=await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release",()=>{wakeLock=null;});
+    }else if(wakeLock){
+      await wakeLock.release();wakeLock=null;
+    }
+  }catch(e){ /* denied, low battery, or unsupported — not worth interrupting anyone */ }
+}
+/* the lock is dropped whenever the tab is hidden, so take it again on return */
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&document.body.dataset.home!=="1")keepAwake(true);
+});
 scrim.onclick=closeDrawer;
 
 document.getElementById("up").onclick=()=>{state.steps++;render();};

@@ -74,6 +74,40 @@ Key points:
   transposed or capo'd when they fix a chord, `pkApply` converts it back first.
   Don't break this.
 
+## Offline, and the screen staying on
+
+`sw.js` — a service worker, and the second deliberate exception to the
+single-file rule. Browsers will not register one from a blob or an inline
+script, so offline genuinely requires its own file. Verified with the network
+fully off: the page loads, all songs render, a chart opens.
+
+- **Network first, cache as the safety net.** Always the freshest page when
+  there is a connection, the last good copy when there is not. Cache-first
+  would be simpler and would mean nobody ever sees an update.
+- **The sync Worker is never cached.** A cached API answer would show stale
+  songs as if they were current; better that the request fails and the app says
+  so.
+- Bump `VERSION` in `sw.js` when `index.html` changes meaningfully. That is what
+  raises the update banner, and it is what replaces telling people to add `?v=2`
+  to the address.
+
+`keepAwake` takes a screen wake lock while a chart is open and drops it on the
+home screen. The lock is released whenever the tab is hidden, so it is taken
+again on `visibilitychange`.
+
+`.updatebar[hidden]{display:none}` is not redundant. `[hidden]` is an attribute
+selector, so a class rule setting `display` ties on specificity and wins on
+source order — without that line the banner covers the header permanently.
+
+## Copyright
+
+The book holds copyrighted lyrics and chord charts on a publicly reachable URL.
+`robots.txt` and a `noindex` tag keep it out of search results. **That reduces
+exposure; it does not resolve licensing** — anyone with the link still reads it.
+CCLI's church licence generally covers congregational reproduction, while
+rehearsal sharing and website posting are separate modules and sheet music is
+usually excluded. Worth confirming what the church holds. Not legal advice.
+
 ## Home
 
 `showHome` / `renderHome`, a full-screen view over the reader, and where the app
