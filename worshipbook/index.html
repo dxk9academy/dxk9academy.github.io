@@ -416,6 +416,41 @@ body[data-readonly="1"] .addsongs{display:none}
   flex:1;min-height:46px;border:1px solid var(--line);border-radius:10px;
   background:var(--panel);font-size:.82em;font-weight:700;color:var(--text)
 }
+.pb.narrow{flex:.62;font-size:.9em}
+.pb.wide{flex:1.5}
+
+/* Go to — the leader has just called something that is not in the plan */
+.jump[hidden]{display:none}
+.jump{
+  position:fixed;inset:0;z-index:66;background:rgba(14,20,32,.72);
+  display:flex;align-items:flex-end
+}
+.jump-card{
+  width:100%;background:var(--panel);border-top:1px solid var(--chord);
+  border-radius:14px 14px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom));
+  max-height:76vh;overflow-y:auto;overscroll-behavior:contain
+}
+.jump-top{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.jump-top h3{
+  margin:0;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)
+}
+.jump-top .btn{margin-left:auto}
+.jump-hint{color:var(--muted);font-size:.76em;margin:0 0 12px;line-height:1.5}
+.jump-list{display:grid;gap:7px}
+.jrow{
+  display:flex;align-items:center;gap:11px;text-align:left;width:100%;
+  border:1px solid var(--line);border-radius:11px;background:var(--panel-2);
+  padding:14px 13px;min-height:52px
+}
+.jrow:active{background:var(--chord);color:#101010}
+.jrow .jn{font-weight:800;font-size:1em;flex:1;min-width:0}
+.jrow .jt{
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.68em;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--line);border-radius:6px;padding:4px 7px
+}
+.jrow[data-here="1"]{border-color:var(--section)}
+.jrow[data-here="1"] .jt{color:var(--section);border-color:var(--section)}
 .pb.go{background:var(--chord);color:#101010;border-color:var(--chord)}
 .pb:active{opacity:.75}
 body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
@@ -533,10 +568,22 @@ body[data-setmode="set"] .addsongs{display:block}
 </div>
 
 <div class="playbar" id="playbar">
-  <button class="pb" id="pbPrev" aria-label="Previous section">‹ Prev</button>
-  <button class="pb go" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
-  <button class="pb" id="pbNext" aria-label="Next section">Next ›</button>
-  <button class="pb" id="pbSpeed" aria-label="Scroll speed">1.0×</button>
+  <button class="pb narrow" id="pbPrev" aria-label="Previous section">‹</button>
+  <button class="pb go wide" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
+  <button class="pb narrow" id="pbNext" aria-label="Next section">›</button>
+  <button class="pb" id="pbJump" aria-label="Jump to a section">Jump</button>
+  <button class="pb narrow" id="pbSpeed" aria-label="Line pace">1.0×</button>
+</div>
+
+<div class="jump" id="jump" hidden>
+  <div class="jump-card">
+    <div class="jump-top">
+      <h3>Go to</h3>
+      <button class="btn" id="jumpClose">Close</button>
+    </div>
+    <p class="jump-hint">Sings from there now. The written arrangement is not changed.</p>
+    <div class="jump-list" id="jumpList"></div>
+  </div>
 </div>
 
 <div class="consent" id="consent" hidden>
@@ -1266,6 +1313,7 @@ function openSong(i){
   hideHome();
   rememberOpened(i);
   state.i=i;state.steps=0;state.step=0;state.pos=-1;
+  closeJump();
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
   setPlaying(false);closeDrawer();render();
 }
@@ -1429,6 +1477,70 @@ document.getElementById("pbPlay").onclick=()=>setPlaying(!playing);
 document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
 document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
 function showDwell(){document.getElementById("pbSpeed").textContent=dwell.toFixed(1)+"s";}
+/* ============================================================
+   GO TO — the live jump.
+
+   {map:} is the PLAN. A leader calls "one more chorus" or "back to the
+   bridge" constantly, and none of that is in the plan. This sings any
+   section from now, by splicing it into the running order at the current
+   position. The written arrangement is never touched: what is on the page
+   stays what was rehearsed, and tomorrow's service starts from the plan
+   again.
+   ============================================================ */
+function sectionsOf(){
+  return [...document.querySelectorAll("#song .sec")]
+    .filter(sec=>sec.dataset.short&&sec.querySelector(".line"))
+    .map(sec=>({
+      short:sec.dataset.short,
+      label:(sec.querySelector(".sec-label")||{textContent:sec.dataset.short}).textContent.trim(),
+      el:sec
+    }));
+}
+function jumpTo(short){
+  const sec=sectionsOf().find(x=>x.short===short);
+  if(!sec)return;
+  const lines=[...sec.el.querySelectorAll(".line")];
+  if(!lines.length)return;
+  /* light the right chip if this section is in the plan at all */
+  const steps=mapSteps(currentSong());
+  let step=steps.findIndex(st=>st.short===short);
+  const at=Math.max(0,Math.min(PLAY.length,state.pos+1));
+  PLAY.splice(at,0,...lines.map(el=>({el,step:step,pass:0,live:true})));
+  state.pos=at;
+  paintedPos=-1;
+  document.body.classList.add("playing");   /* so the highlight is visible even paused */
+  paintActive();
+  closeJump();
+  toast("Now: "+sec.label);
+}
+function paintJump(){
+  const box=document.getElementById("jumpList");
+  const here=PLAY[state.pos];
+  const nowShort=here&&here.el.closest(".sec")?here.el.closest(".sec").dataset.short:null;
+  const steps=mapSteps(currentSong());
+  box.innerHTML="";
+  sectionsOf().forEach(sec=>{
+    const inPlan=steps.some(st=>st.short===sec.short);
+    const b=document.createElement("button");
+    b.className="jrow";
+    if(sec.short===nowShort)b.dataset.here="1";
+    b.innerHTML='<span class="jn">'+esc(sec.label)+'</span>'+
+                '<span class="jt">'+(sec.short===nowShort?"here":(inPlan?"in plan":"extra"))+'</span>';
+    b.onclick=()=>jumpTo(sec.short);
+    box.appendChild(b);
+  });
+  if(!box.children.length)box.innerHTML='<p class="jump-hint">This song has no named sections.</p>';
+}
+function openJump(){document.getElementById("jump").hidden=false;paintJump();}
+function closeJump(){document.getElementById("jump").hidden=true;}
+document.getElementById("pbJump").onclick=()=>{
+  document.getElementById("jump").hidden?openJump():closeJump();
+};
+document.getElementById("jumpClose").onclick=closeJump;
+document.getElementById("jump").addEventListener("click",e=>{
+  if(e.target.id==="jump")closeJump();      /* tap the dimmed area to dismiss */
+});
+
 document.getElementById("pbSpeed").onclick=()=>{
   dwell=DWELLS[(DWELLS.indexOf(dwell)+1)%DWELLS.length];
   showDwell();toast(dwell.toFixed(1)+"s per line");

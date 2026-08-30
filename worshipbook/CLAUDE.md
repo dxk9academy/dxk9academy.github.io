@@ -178,6 +178,24 @@ the section it points at.
 Anything that navigates must work on step indexes, never on section names.
 Matching by name is what made every chorus chip light up at once.
 
+## Go to — the live jump
+
+`{map:}` is the **plan**. A leader calls "one more chorus" or "back to the
+bridge" constantly, and none of that is in the plan. **Go to** sings any section
+from now by splicing its lines into `PLAY` at the current position.
+
+The written arrangement is never modified. That is the whole point: what is on
+the page stays what was rehearsed, and the next service starts from the plan
+again rather than from last Sunday's improvising.
+
+Sections absent from `{map:}` are still offered, marked *extra*, so a bridge
+that was cut can still be called on the day. The chip for a section that *is*
+in the plan lights when jumped to.
+
+Editing the arrangement to express a live repeat would be the obvious
+implementation and is the wrong one — it makes every off-script moment a
+permanent edit to the song.
+
 ## Services (set lists)
 
 `SETS` is a one-line array of `{name, songs:[title]}` — a named, ordered list of
