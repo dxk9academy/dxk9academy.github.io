@@ -360,6 +360,48 @@ layout — otherwise each step nudged the rest of the song down by 4px.
 An earlier version scrolled at a constant rate and highlighted whatever sat
 under a fixed y. Do not go back to that: it never lands on the sung line.
 
+## Drums
+
+`{beat:}` carries the groove with the song, in the same shape the drummer's own
+online tool uses so a pattern can be copied across by eye:
+
+```
+{beat: 4/4 16 H=xxxxxxxxxxxxxxxx S=OO--O-------O--- K=ooo-----o-------}
+```
+
+Time signature, subdivisions per bar, then one row per voice — `H`at, `S`nare,
+`K`ick, `T`om, `C`rash. `-` is a rest, `o`/`x` a hit, `O`/`X` an accent. The
+`Drums` button in the control row opens a grid over the play bar; a cell cycles
+off → hit → accent.
+
+**Sounds are synthesised, never sampled.** A kit of wav files would be megabytes,
+would break the single-file rule and would not survive offline. Four oscillators
+and one noise buffer cost nothing: kick is a sine swept 150→48Hz, snare is
+filtered noise plus a 190Hz triangle, hats and crash are highpassed noise, tom
+is a slower sine sweep.
+
+**Timing does not run on `requestAnimationFrame`, and must not.** rAF is fine for
+a lyric highlight arriving 30ms late; a hi-hat 30ms late is audibly wrong, and
+rAF stalls whenever the browser is busy. Notes are scheduled up to 120ms ahead
+against `AudioContext.currentTime`, which is sample-accurate, on a 25ms
+`setInterval`. rAF only moves the playhead to catch up with what was already
+scheduled. Verified: at 80bpm on sixteenths every scheduled gap is exactly
+0.1875s.
+
+- **Playing is for everyone; editing the pattern is admin only**, gated on the
+  same `body[data-readonly]` as every other edit. A drummer who is not signed in
+  can still hear the groove.
+- `openSong` calls `closeDrums`, so changing song never leaves a beat playing.
+- `{beat:}` is carried through the editor by a hidden `#fBeat` input, and
+  `buildFile` clears `#drumGrid` so the generated cells are not baked into the
+  published file.
+- Changing the subdivision keeps the hits that still land on a real subdivision
+  and drops the rest, rather than silently moving them somewhere they were not.
+
+The iPhone ringer switch mutes Web Audio. That is the platform's behaviour, not
+something this file can fix — if the beat is silent on a phone, check the switch
+first.
+
 ## Keeping work (localStorage)
 
 `saveLocal` writes `{stamp, songs, sets}` under `worshipbook.v1` after every
