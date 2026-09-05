@@ -711,6 +711,16 @@ body[data-setmode="set"] .addsongs{display:block}
 const SHARP=["A","A#","B","C","C#","D","D#","E","F","F#","G","G#"];
 const FLAT =["A","Bb","B","C","Db","D","Eb","E","F","Gb","G","Ab"];
 const FLATKEYS=new Set(["F","Bb","Eb","Ab","Db","Gb","Dm","Gm","Cm","Fm","Bbm","Ebm"]);
+/* A# and Bb are the same note and musicians write the flat, but the stored key
+   also decides how every chord is SPELLED — naming Thanks And Praise "Bb" spelt
+   the bass of its D chord as Gb, which no one writes. So the sharp name is kept
+   for the maths and the conventional name is used when a person reads it. */
+const PRETTY={"A#":"Bb","D#":"Eb","G#":"Ab","C#":"Db"};
+function prettyKey(k){
+  if(!k)return k;
+  const min=/m$/.test(k), b=k.replace(/m$/,"");
+  return (PRETTY[b]||b)+(min?"m":"");
+}
 const RE=/^([A-G])([#b]?)(.*)$/;
 
 function idx(root,acc){
@@ -867,7 +877,7 @@ function render(){
   document.getElementById("title").textContent=s.meta.title||"Untitled";
   document.getElementById("meta").innerHTML=
     (s.meta.role?"<b>"+s.meta.role+"</b> · ":"")+
-    "sounds in "+sounding+(state.capo?" · play "+shown+" shapes":"")+
+    "sounds in "+prettyKey(sounding)+(state.capo?" · play "+prettyKey(shown)+" shapes":"")+
     (s.meta.tempo?" · "+s.meta.tempo+" bpm":"");
   document.getElementById("keyOut").textContent=shown;
   document.getElementById("capoOut").textContent=state.capo;
@@ -1279,7 +1289,7 @@ function renderHome(){
             '<span class="num">'+(n+1)+'</span>'+
             '<span class="who"><span class="nm">'+esc(m.title||"Untitled")+'</span>'+
             (m.role?'<span class="rl">'+esc(m.role)+'</span>':'')+'</span>'+
-            '<span class="ky">'+esc(m.key||"?")+capo+'</span></button>';
+            '<span class="ky">'+esc(prettyKey(m.key)||"?")+capo+'</span></button>';
     });
     if(idx.length)html+='<div class="card-foot"><button class="bigbtn" id="hStart">Start the set</button></div>';
     else html+='<div class="card-foot"><p class="card-meta">No songs in this service yet.</p></div>';
@@ -1863,7 +1873,6 @@ function nextSong(d){
    Chords go inline in [square brackets] where the chord changes.
    ============================================================ */
 const SONGS=[
-
 `{title: I Love This Family of God}
 {role: Welcome}
 {key: D}
@@ -1879,41 +1888,38 @@ And [F#m]I'm so glad to be a [Bm]part
 Of [Em]this great [A]fami[D]ly
 {section: End}
 | Em | A | D |`,
-
 `{title: Joy}
 {role: Opening}
-{key: C}
+{key: F}
 {capo: 5}
 {map: Intro - V1 - V2 - PC - C - Br - C}
-{cue: Verse 2 in the old chart was a duplicate of Verse 1. Confirm the real words with the leader.}
 {section: Intro}
-| C | G | D | Em |  (4x)
+| F | C | G | Am |  (4x)
 {section: Verse 1}
-[C]You've turned it [G]all a[D]round[Em]
-[C]Where I was [G]hurting [D]now I'm re[Em]joicing
-[C]In Your love I'm [G]found[D] and [Em]I have [C]joy, [G]woah[D][Em]
-[C]You took a[G]way my [D]pain[Em]
-[C]You turned my [G]mourning [D]into [Em]dancing
-[C]I can smile a[G]gain[D] 'cause [Em]I have [C]joy, [G]woah[D][Em]
+[F]You've turned it [C]all a[G]round[Am]
+[F]Where I was [C]hurting [G]now I'm re[Am]joicing
+[F]In Your love I'm [C]found[G] and [Am]I have [F]joy, [C]woah[G][Am]
+[F]You took a[C]way my [G]pain[Am]
+[F]You turned my [C]mourning [G]into [Am]dancing
+[F]I can smile a[C]gain[G] 'cause [Am]I have [F]joy, [C]woah[G][Am]
 {section: Verse 2}
-[C]You took a[G]way my [D]pain[Em]
-[C]You turned my [G]mourning [D]into [Em]dancing
-[C]I can smile a[G]gain[D] 'cause [Em]I have [C]joy, [G]woah[D][Em]
+[F]You took a[C]way my [G]pain[Am]
+[F]You turned my [C]mourning [G]into [Am]dancing
+[F]I can smile a[C]gain[G] 'cause [Am]I have [F]joy, [C]woah[G][Am]
 {section: Pre-Chorus}
-[C]Let the celebration be[D]gin
-[C]Make a joyful [D]noise unto [G]Him
-[C]Come on every[D]body
-[C]Let's give Him [Em]praise for He is [D]good
+[F]Let the celebration be[G]gin
+[F]Make a joyful [G]noise unto [C]Him
+[F]Come on every[G]body
+[F]Let's give Him [Am]praise for He is [G]good
 {section: Chorus}
-[G]You have given [C]me a joy that [Em]won't stop[G]
-And will [C]never leave, so I will [G]praise You with [C]gladness
-For [Em]You are [D]good [C]
+[C]You have given [F]me a joy that [Am]won't stop[C]
+And will [F]never leave, so I will [C]praise You with [F]gladness
+For [Am]You are [G]good [F]
 {section: Bridge}
-[G]You've turned my sadness into [C]gladness
-[G]You've turned my sorrow into [D]joy
-[G]Now I'm singing and I'm [C]dancing
-And [Em]I will [D]shout for [G]joy`,
-
+[C]You've turned my sadness into [F]gladness
+[C]You've turned my sorrow into [G]joy
+[C]Now I'm singing and I'm [F]dancing
+And [Am]I will [G]shout for [C]joy`,
 `{title: Faithfulness}
 {role: Fast}
 {key: C}
@@ -1967,71 +1973,67 @@ This hope won't fade in the evening   (N.C.)
 [Am7]Lord, how great is Your faithfulness
 {section: Outro}
 | C | Csus | C | Csus | C |`,
-
 `{title: How Great Is Our God}
 {role: Solemn}
-{key: G}
+{key: A#}
 {capo: 3}
 {map: V1 - C - V2 - C - Br - C x2}
 {section: Verse 1}
-The [G]splendor of a King, clothed in ma[Em]jesty
-Let all the [C]earth rejoice, all the [D]earth rejoice
-He [G]wraps himself in Light, and darkness tries to [Em]hide
-And [C]trembles at His voice, trembles at His [D]voice
+The [A#]splendor of a King, clothed in ma[Gm]jesty
+Let all the [D#]earth rejoice, all the [F]earth rejoice
+He [A#]wraps himself in Light, and darkness tries to [Gm]hide
+And [D#]trembles at His voice, trembles at His [F]voice
 {section: Verse 2}
-[G]Age to age He stands, and time is in His [Em]hands
-Be[C]ginning and the end, beginning and the [D]end
-The [G]Godhead Three in One, Father, Spirit, [Em]Son
-The [C]Lion and the Lamb, the Lion and the [D]Lamb
+[A#]Age to age He stands, and time is in His [Gm]hands
+Be[D#]ginning and the end, beginning and the [F]end
+The [A#]Godhead Three in One, Father, Spirit, [Gm]Son
+The [D#]Lion and the Lamb, the Lion and the [F]Lamb
 {section: Chorus}
-[G]How great is our God, sing with me
-[Em]How great is our God, and all will see
-How [C]great, how [D]great is our [G]God[D]
+[A#]How great is our God, sing with me
+[Gm]How great is our God, and all will see
+How [D#]great, how [F]great is our [A#]God[F]
 {section: Bridge}
-[G]Name above all names, Worthy of our [Em]praise
-My [C]heart will sing how [D]great is our [G]God
-[G]Name above all names, Worthy of our [Em]praise
-My [C]heart will sing how [D]great is our [G]God`,
-
+[A#]Name above all names, Worthy of our [Gm]praise
+My [D#]heart will sing how [F]great is our [A#]God
+[A#]Name above all names, Worthy of our [Gm]praise
+My [D#]heart will sing how [F]great is our [A#]God`,
 `{title: Holy Forever}
 {role: Solemn}
-{key: G}
+{key: A#}
 {capo: 3}
 {map: V1 - PC - C - V2 - PC - C - Tag}
-{cue: Capo 3 puts this in Bb — the sounding key on the old chart.}
 {section: Verse 1}
-A [G]thousand generations
-Falling [C]down in [G]worship
-To [Em]sing the [D]song of ages to the [C]Lamb
-And [G]all who've gone before us and
-[C]All who will be[G]lieve
-Will [Em]sing the [D]song of ages to the [C]Lamb
+A [A#]thousand generations
+Falling [D#]down in [A#]worship
+To [Gm]sing the [F]song of ages to the [D#]Lamb
+And [A#]all who've gone before us and
+[D#]All who will be[A#]lieve
+Will [Gm]sing the [F]song of ages to the [D#]Lamb
 {section: Verse 2}
-[G]If you've been forgiven and
-[C]If you've been re[G]deemed
-[Em]Sing the [D]song forever to the [C]Lamb
-[G]If you walk in freedom and
-[C]If you bear His [G]name
-[Em]Sing the [D]song forever to the [C]Lamb
+[A#]If you've been forgiven and
+[D#]If you've been re[A#]deemed
+[Gm]Sing the [F]song forever to the [D#]Lamb
+[A#]If you walk in freedom and
+[D#]If you bear His [A#]name
+[Gm]Sing the [F]song forever to the [D#]Lamb
 {section: Pre-Chorus}
-[C]Your name is the highest
-[D]Your name is the greatest
-[Em]Your name stands a[C]bove them all
-[C]All thrones and dominions
-[D]All powers and positions
-[Em]Your name stands a[Am]bove them all
+[D#]Your name is the highest
+[F]Your name is the greatest
+[Gm]Your name stands a[D#]bove them all
+[D#]All thrones and dominions
+[F]All powers and positions
+[Gm]Your name stands a[Cm]bove them all
 {section: Chorus}
-And the [C]angels cry, [D]Holy
-[G]All creation cries, [Em]Holy
-[Am]You are lifted high, [D]Holy
-[G]Holy forever
-[C]Hear your people sing, [D]Holy
-[G]To the King of Kings, [Em]Holy
-[Am]You will always be, [D]Holy
-[G]Holy forever
+And the [D#]angels cry, [F]Holy
+[A#]All creation cries, [Gm]Holy
+[Cm]You are lifted high, [F]Holy
+[A#]Holy forever
+[D#]Hear your people sing, [F]Holy
+[A#]To the King of Kings, [Gm]Holy
+[Cm]You will always be, [F]Holy
+[A#]Holy forever
 {section: Tag}
-We'll [Em]sing the [D]song forever and a[C]men`,
-
+We'll [Gm]sing the [F]song forever and a[D#]men`,
 `{title: Sa Biyaya}
 {role: Offering}
 {key: C}
@@ -2073,57 +2075,55 @@ Ang [Dm]lahat nitoy bi[G]yaya Mo sa[F]min[G]
 [Dm]Papupu[Em]rihan [F]Ka
 {section: Outro}
 | F | G | Em | Em | Dm | Am | Dm | Em | F | D/F# | G |`,
-
 `{title: Hallelujah I'm Free}
 {role: Fast}
-{key: C}
+{key: C#}
 {capo: 1}
 {map: Intro - V1 - C - Inst - V2 - C - Inst - Br - C - Inst}
 {section: Intro}
-| C |
+| C# |
 {section: Verse 1}
-[F]Thank you [C]God
-[G]Cause you saved my life
-[Am]I left the old be[G]hind
-And [F]You've been [C]good to [G]me
-[F]All my [C]life
-[G]You have been faithful
-[Am]Lord I am [G]grateful
-I [F]give You [C]all my [G]praise
+[F#]Thank you [C#]God
+[G#]Cause you saved my life
+[A#m]I left the old be[G#]hind
+And [F#]You've been [C#]good to [G#]me
+[F#]All my [C#]life
+[G#]You have been faithful
+[A#m]Lord I am [G#]grateful
+I [F#]give You [C#]all my [G#]praise
 {section: Verse 2}
-[F]Ain't no [C]rock
-[G]Gonna cry out louder
-[Am]I'm gonna shout it
-You [F]can't [C]stop my [G]praise
+[F#]Ain't no [C#]rock
+[G#]Gonna cry out louder
+[A#m]I'm gonna shout it
+You [F#]can't [C#]stop my [G#]praise
 {section: Chorus}
-[F]Hallelu[C]jah I am free
-[G]You get all of me
-[Am]With every heartbeat
-[Am]Forever [C]I'm alive
-[G]You rewrote the [Am]story of my life
-[F]We give you [C]praise
-[G]Hallelu[Am]jah[G]
-[F]We give You [C]praise
-[G]Hallelujah
+[F#]Hallelu[C#]jah I am free
+[G#]You get all of me
+[A#m]With every heartbeat
+[A#m]Forever [C#]I'm alive
+[G#]You rewrote the [A#m]story of my life
+[F#]We give you [C#]praise
+[G#]Hallelu[A#m]jah[G#]
+[F#]We give You [C#]praise
+[G#]Hallelujah
 {section: Instrument}
-| C |
+| C# |
 {section: Bridge}
-[C]Praise Him in the dark
-[F]Praise Him in the night
-[C]Praise Him in the battle
-[F]Praise Him in the fight
-[C]Praise Him when I'm up
-[F]Praise Him when I'm down
-With [Dm]every breath I [G]praise Him
+[C#]Praise Him in the dark
+[F#]Praise Him in the night
+[C#]Praise Him in the battle
+[F#]Praise Him in the fight
+[C#]Praise Him when I'm up
+[F#]Praise Him when I'm down
+With [D#m]every breath I [G#]praise Him
 {cue: Repeat this half of the bridge 3x, then continue.}
-[C]Praise Him cause He's good
-[F]Praise Him cause He's true
-[C]He is never changing
-[F]Always coming through
-[C]Praise Him cause this mountain
-[F]It will be removed
-With [Dm]every breath I'll [G]praise the [C]Lord`,
-
+[C#]Praise Him cause He's good
+[F#]Praise Him cause He's true
+[C#]He is never changing
+[F#]Always coming through
+[C#]Praise Him cause this mountain
+[F#]It will be removed
+With [D#m]every breath I'll [G#]praise the [C#]Lord`,
 `{title: I've Got Joy}
 {role: Fast}
 {key: A}
@@ -2194,7 +2194,6 @@ It feels like heaven now
 I'll rejoice (Jesus, You're the reason we sing)
 All because of you Jesus
 I'll shout my praises loud`,
-
 `{title: Never Once}
 {role: Solemn}
 {key: G}
@@ -2238,80 +2237,75 @@ You are [C]faithful, [G]God, You are [Em]faith-[D]ful
 You are [C]faithful, [G]God, You are [Em]faith-[D]ful
 {section: Outro}
 You are [C]faithful, [G]God, You are [Em]faith-[D]ful`,
-
 `{title: The Glory of God}
 {role: Solemn}
-{key: C}
+{key: D#}
 {capo: 3}
 {map: V1 - C - V2 - C - Br - C - Br - Outro}
-{cue: Outro transitions straight into Fall Like Rain — do not stop.}
 {section: Verse 1}
-[C]Christ was one with [F]God, humbly [G]He came [C]low
-Not [Am]clinging to His [F]throne, though [G]equal with the [C]Father
-[C]Christ the servant [F]king, He gave [G]up every[C]thing[G]
-O[Am]bedient to [F]death, even [G]death on a [C]cross
+[D#]Christ was one with [G#]God, humbly [A#]He came [D#]low
+Not [Cm]clinging to His [G#]throne, though [A#]equal with the [D#]Father
+[D#]Christ the servant [G#]king, He gave [A#]up every[D#]thing[A#]
+O[Cm]bedient to [G#]death, even [A#]death on a [D#]cross
 {section: Verse 2}
-[C]When He marched below, He triumphed all the more
-For [Am]death was over[Dm]thrown by the [G]victory of [C]Jesus
-On the [C]third, He [Dm]rose, as[G]cended to the [C]throne[G]
-And He [Am]reigns for[Dm]evermore, [G]Christ the Lord of [C]lords
+[D#]When He marched below, He triumphed all the more
+For [Cm]death was over[Fm]thrown by the [A#]victory of [D#]Jesus
+On the [D#]third, He [Fm]rose, as[A#]cended to the [D#]throne[A#]
+And He [Cm]reigns for[Fm]evermore, [A#]Christ the Lord of [D#]lords
 {section: Chorus}
-Now [C]glorified, [G]Lifted high
-He re[Am]ceived the name a[F]bove all names
-To [C]Christ we will [G]bow and [Am]every tongue will [F]testify
-[C]Jesus Christ is [G]Lord of all
-[Am]Jesus Christ is [F]Lord of all
-A[C]men, A[G]men, A - [F]men
+Now [D#]glorified, [A#]Lifted high
+He re[Cm]ceived the name a[G#]bove all names
+To [D#]Christ we will [A#]bow and [Cm]every tongue will [G#]testify
+[D#]Jesus Christ is [A#]Lord of all
+[Cm]Jesus Christ is [G#]Lord of all
+A[D#]men, A[A#]men, A - [G#]men
 {section: Bridge}
-[Am]We have witnessed the glory of God
-[F]In His blood upon that cross
-[C]We have witnessed the glory of God
-in the [Em]Son, Hallelujah
-[Am]Death oh death now where is your sting
-[F]We shout praise where the victory is
-[C]Jesus silenced the grave now forever
-we'll [Em]sing, Halle[G]lujah
+[Cm]We have witnessed the glory of God
+[G#]In His blood upon that cross
+[D#]We have witnessed the glory of God
+in the [Gm]Son, Hallelujah
+[Cm]Death oh death now where is your sting
+[G#]We shout praise where the victory is
+[D#]Jesus silenced the grave now forever
+we'll [Gm]sing, Halle[A#]lujah
 {section: Outro}
-[C]Hallelu[G]jah, Halle[Am]lujah, Halle[F]lujah, Hallelujah
-[C]Hallelu[G]jah, Halle[Am]lujah, Halle[F]lujah, Hallelujah`,
-
+[D#]Hallelu[A#]jah, Halle[Cm]lujah, Halle[G#]lujah, Hallelujah
+[D#]Hallelu[A#]jah, Halle[Cm]lujah, Halle[G#]lujah, Hallelujah`,
 `{title: Fall Like Rain}
 {role: Solemn}
-{key: C}
+{key: D#}
 {capo: 3}
 {map: Intro - V1 - C - V2 - C - Int - Br - C}
-{cue: Comes in straight off the end of The Glory of God.}
 {section: Intro}
-| C | G | Am | F |
+| D# | A# | Cm | G# |
 {section: Verse 1}
-[C]God, I live to worship You
-[G]All my life I offer You
-[Am]Simple melodies of [F]sacrifice
-[C]Open hands and open heart
-[G]You're the only one I want
-[Am]Your presence is my [F]treasure, my delight
+[D#]God, I live to worship You
+[A#]All my life I offer You
+[Cm]Simple melodies of [G#]sacrifice
+[D#]Open hands and open heart
+[A#]You're the only one I want
+[Cm]Your presence is my [G#]treasure, my delight
 {section: Verse 2}
-[C]One thing I ask, one thing I seek
-[G]So much more than anything
-To [Am]dwell within Your [C]house for [F]all my days
-[C]Knowing You is everything
-[G]So I let go of lesser things
-[Am]You alone are [G]worthy of my [F]praise
-[Am]Stir in me a [G]passion for Your [F]name
+[D#]One thing I ask, one thing I seek
+[A#]So much more than anything
+To [Cm]dwell within Your [D#]house for [G#]all my days
+[D#]Knowing You is everything
+[A#]So I let go of lesser things
+[Cm]You alone are [A#]worthy of my [G#]praise
+[Cm]Stir in me a [A#]passion for Your [G#]name
 {section: Chorus}
-[C]Fall like [G]rain
-[Am]Holy Spirit, [F]fall like rain
-[C]Holy Spirit, [G]have Your way
-[Am]Let Your glory fall down
-[F]Let Your glory fall down
+[D#]Fall like [A#]rain
+[Cm]Holy Spirit, [G#]fall like rain
+[D#]Holy Spirit, [A#]have Your way
+[Cm]Let Your glory fall down
+[G#]Let Your glory fall down
 {section: Interlude}
-| C | Dm | C | F |
+| D# | Fm | D# | G# |
 {section: Bridge}
-[C]May I never lose the [Dm]wonder of Your presence
-[C]May I always stand in [F]awe of who You are
-[C]Oh, the beauty and the [Dm]gift of Your friendship
-[C]Is unlike anything [F]I've ever known`,
-
+[D#]May I never lose the [Fm]wonder of Your presence
+[D#]May I always stand in [G#]awe of who You are
+[D#]Oh, the beauty and the [Fm]gift of Your friendship
+[D#]Is unlike anything [G#]I've ever known`,
 `{title: Worthy Is The Lamb}
 {role: Communion}
 {key: G}
@@ -2342,36 +2336,34 @@ The [D]Darling of [G]Heaven cruci[C]fied[D]
 {section: Bridge}
 [Am]Worthy [G]is the [C]Lamb
 [Am]Worthy [G]is the [D]Lamb`,
-
 `{title: Thanks And Praise}
 {role: Offering}
-{key: A}
+{key: A#}
 {capo: 1}
 {map: Intro - V1 - C - V2 - C x2 - Br x3 - C x2 - End - Outro}
 {section: Intro}
-| D \\\\\\ | A \\\\\\ | E \\\\\\ | A \\\\\\ | D/A \\\\\\ |
+| D# \\\\\\ | A# \\\\\\ | F \\\\\\ | A# \\\\\\ | D#/A# \\\\\\ |
 {section: Verse 1}
-[A]We are here to[D/F#]gether, to lift our hearts as one
-[A]We're in our Father's [D]presence, His Spirit is with us
+[A#]We are here to[D#/G]gether, to lift our hearts as one
+[A#]We're in our Father's [D#]presence, His Spirit is with us
 {section: Verse 2}
-[A]And each and ev'ry [D/F#]morning, we'll tell of His great love
-[A]Of all His faithful [D]mercies, and all that He has done
-[A]For who can match His [D]kindness, and who can count His works?
-[A]Oh, let our praise con[D]tinue, 'til evening draws in close
+[A#]And each and ev'ry [D#/G]morning, we'll tell of His great love
+[A#]Of all His faithful [D#]mercies, and all that He has done
+[A#]For who can match His [D#]kindness, and who can count His works?
+[A#]Oh, let our praise con[D#]tinue, 'til evening draws in close
 {section: Chorus}
-It is [D]good to lift the [A]name of the Lord our God
-It is [E]right to give Him [F#m]thanks and praise
-For His [D]heart is over[A]flowing with love for us
-And His [E]mercy we can [A]never contain
+It is [D#]good to lift the [A#]name of the Lord our God
+It is [F]right to give Him [Gm]thanks and praise
+For His [D#]heart is over[A#]flowing with love for us
+And His [F]mercy we can [A#]never contain
 {section: Bridge}
-[E]Glory, [D]honour, wisdom, [A]pow'r and strength
-To our [E]Saviour, [D]Jesus, worthy of [A]all praise
+[F]Glory, [D#]honour, wisdom, [A#]pow'r and strength
+To our [F]Saviour, [D#]Jesus, worthy of [A#]all praise
 {section: Ending}
-It is [E]right to give Him [A]thanks and praise
-It is [E]right to give Him [A]thanks and praise
+It is [F]right to give Him [A#]thanks and praise
+It is [F]right to give Him [A#]thanks and praise
 {section: Outro}
-| D \\\\\\ | A \\\\\\ | E \\\\\\ |  one strum on A`,
-
+| D# \\\\\\ | A# \\\\\\ | F \\\\\\ |  one strum on A#`,
 `{title: Kamusta Ka Na}
 {role: Welcome}
 {key: D}
@@ -2396,44 +2388,42 @@ It is [E]right to give Him [A]thanks and praise
 [Em]Sabay na [F#m]umaawit
 [Em]Sabay na [F#m]sumasamba
 [Em]Kay sarap ng feeling [A]'di ba 'pag [D]tayo'y`,
-
 `{title: Impossible Possible}
 {role: Fast}
-{key: G}
+{key: G#}
 {capo: 1}
 {map: Intro - V1 - PC - C - Refrain - Int - V2 - PC - C - Refrain - Br - C - Refrain}
 {section: Intro}
-| G | Bm | A |  (2x)
+| G# | Cm | A# |  (2x)
 {section: Verse 1}
-Can't ex[G]plain these [Bm]promises[A]
-Oh, they're [G]better than I [Bm]could dream[A]
-Lord, Your [G]ways are [Bm]wonderful[A]
-You have [G]always been [Bm]good to me[A]
+Can't ex[G#]plain these [Cm]promises[A#]
+Oh, they're [G#]better than I [Cm]could dream[A#]
+Lord, Your [G#]ways are [Cm]wonderful[A#]
+You have [G#]always been [Cm]good to me[A#]
 {section: Pre-Chorus}
-More than I [G]could ask for, more than I [Bm]could think[A]
-More than I [G]imagined, im[Bm]agined, imagined[A]
-Lord, You [G]made it happen, You [Bm]can do all things[A]
-Just as You [G]imagined, im[Bm]agined, imagined[A]
+More than I [G#]could ask for, more than I [Cm]could think[A#]
+More than I [G#]imagined, im[Cm]agined, imagined[A#]
+Lord, You [G#]made it happen, You [Cm]can do all things[A#]
+Just as You [G#]imagined, im[Cm]agined, imagined[A#]
 {section: Chorus}
-When I [G]look and see__ all [Bm]that You've done for me[A]
-Lord, I [G]know You made the im[Bm]possible possible[A]
-[G]I'm free__, living [Bm]in victory[A]
-Only [G]You can make the im[Bm]possible possible[A]
+When I [G#]look and see__ all [Cm]that You've done for me[A#]
+Lord, I [G#]know You made the im[Cm]possible possible[A#]
+[G#]I'm free__, living [Cm]in victory[A#]
+Only [G#]You can make the im[Cm]possible possible[A#]
 {section: Refrain}
-[G]You make the im[Bm]possible possible[A]
+[G#]You make the im[Cm]possible possible[A#]
 {section: Interlude}
-| G | Bm | A |
+| G# | Cm | A# |
 {section: Verse 2}
-I know [G]faith is [Bm]not a wish[A]
-It's the [G]truth of the [Bm]things unseen[A]
-Oh, anything can [G]change 'cause [Bm]I believe[A]
-That You're [G]working be[Bm]hind the scenes[A]
+I know [G#]faith is [Cm]not a wish[A#]
+It's the [G#]truth of the [Cm]things unseen[A#]
+Oh, anything can [G#]change 'cause [Cm]I believe[A#]
+That You're [G#]working be[Cm]hind the scenes[A#]
 {section: Bridge}
-[G]There was no mountain, [D/F#]Lord, You [Asus]could not move[Bm]
-[G]There was no valley You [D/F#]didn't see [Asus]me through[Bm]
-Now__ [Em]my world is brighter, [D]oh, 'cause [Bm]Lord with You[A]
-The im[G]possible__ [D/F#]was [Asus]possible__[Bm]`,
-
+[G#]There was no mountain, [D#/G]Lord, You [A#sus]could not move[Cm]
+[G#]There was no valley You [D#/G]didn't see [A#sus]me through[Cm]
+Now__ [Fm]my world is brighter, [D#]oh, 'cause [Cm]Lord with You[A#]
+The im[G#]possible__ [D#/G]was [A#sus]possible__[Cm]`,
 `{title: Be With You}
 {role: Solemn}
 {key: G}
@@ -2469,7 +2459,6 @@ And I [Em7]long to bring my [Dm]life an offer[G]ing
 I give [Am7]all to be with [D7]You[G]
 {section: Interlude}
 | Em | Em7 | Bm | Bm7 | Am7 | G | Em - Bm | C | A | D |`,
-
 `{title: I Sing Praises To Your Name}
 {role: Solemn}
 {key: G}
@@ -2486,7 +2475,6 @@ And [D]greatly to be [G]praised[G7]
 Glory to Your [Bm]name O [Em]Lord
 For Your [C]name is great
 And [D]greatly to be [G]praised[G7]`,
-
 `{title: Set A Fire}
 {role: Solemn}
 {key: D}
@@ -2503,7 +2491,6 @@ That I [Bm]can't contain, that I can't control
 I [G]want more of you God
 I [D]want more of you God
 [D]I want more, I want more`,
-
 `{title: At The Cross}
 {role: Communion}
 {key: E}
@@ -2539,39 +2526,36 @@ I know [A2]You love [Bsus]me.[B]
 [E/G#]And You stand be[A2]fore me,[B] [C#m7]
 I know [A2]You love [Bsus]me;[B]
 I know [A2]You love [Bsus]me.[B]`,
-
 `{title: Offering Song}
 {role: Offering}
-{key: G}
+{key: B}
 {capo: 4}
 {map: Intro - V1 - C - Inst - V2 - C}
-{cue: Capo 4 puts this in B — the sounding key on the original chart.}
 {section: Intro}
-| G | D | Em | C | G | D | Em | C |
+| B | F# | G#m | E | B | F# | G#m | E |
 {section: Verse 1}
-[G]I don't need riches, I don't [D]seek fame
-All I [Em]need is to believe in Your [C]name
-[G]I don't seek treasures that [D]soon will be gone
-But you [C]died for me once
-And I [C]know this is true
-So with [C]all of my life
-I'm [D]living for You
+[B]I don't need riches, I don't [F#]seek fame
+All I [G#m]need is to believe in Your [E]name
+[B]I don't seek treasures that [F#]soon will be gone
+But you [E]died for me once
+And I [E]know this is true
+So with [E]all of my life
+I'm [F#]living for You
 {section: Chorus}
-[G]Lord, here's my [D]offering
-It's more than just this [Em]song I [C]sing
-It's my [G]life[D]
-[G]And when I think up[D]on the day
-You saved me cause of [Em]grace
-Oh [C]Lord, here's my [D]offering
+[B]Lord, here's my [F#]offering
+It's more than just this [G#m]song I [E]sing
+It's my [B]life[F#]
+[B]And when I think up[F#]on the day
+You saved me cause of [G#m]grace
+Oh [E]Lord, here's my [F#]offering
 {section: Instrumental}
-| G | D | Em | C | G | D | Em | C |
+| B | F# | G#m | E | B | F# | G#m | E |
 {section: Verse 2}
-[G]I lay it down and You [D]raise me up
-With Your [Em]life and peace and hope that won't give [C]up
-[G]All my tomorrows are [D]safe in Your hands
-But You [C]died for me once
-And I [C]know this is true`
-
+[B]I lay it down and You [F#]raise me up
+With Your [G#m]life and peace and hope that won't give [E]up
+[B]All my tomorrows are [F#]safe in Your hands
+But You [E]died for me once
+And I [E]know this is true`
 ];
 
 /* Services (set lists). One line, rewritten wholesale on download. */

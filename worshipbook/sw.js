@@ -13,7 +13,7 @@
    makes the "New version" banner appear.
    ============================================================= */
 
-const VERSION = "2026-09-05b";
+const VERSION = "2026-09-05c";
 const CACHE = "worshipbook-" + VERSION;
 const SHELL = ["./", "./index.html"];
 
