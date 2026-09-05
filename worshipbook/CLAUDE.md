@@ -403,6 +403,23 @@ bar is 2.0s: a two-bar Intro crashes at 0 and 2.0, a one-bar Verse takes over at
 4.0 with its own kick and snare, and the Intro resumes at 6.0. Play starts on
 the block the band is already on, not always at the top.
 
+### The chart must be readable without tapping
+
+Two things made the first version unusable, and both were only visible in a
+screenshot rather than a passing test:
+
+- **The notation was hidden behind a tap.** Opening Drums showed a list of
+  section names and nothing else. A chart you have to tap into to read is not a
+  chart, so `renderStave` now draws onto every chart row as well — the same
+  drawing at 13px a step instead of 26, cropped to the notation
+  (`tight`) because the uncropped box is mostly empty air and only three
+  sections fit on a phone. Five fit now.
+- **Every song started empty.** Nine rows reading "no groove yet" is a to-do
+  list. `GROOVES` holds the feels a worship set actually uses, `suggestGroove`
+  maps a section name to one, and **Start me a chart** fills a whole song in a
+  tap — never overwriting a groove that already exists. The presets also appear
+  as chips in the groove editor.
+
 **`loadInto` must stop reading song directives at the first `{section:}`.**
 It matched `{beat:}` anywhere, so opening a song in the editor hoisted a chorus
 groove onto the whole song and deleted it from the section.

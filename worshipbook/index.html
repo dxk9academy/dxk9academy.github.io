@@ -516,6 +516,17 @@ body[data-readonly="1"] .addsongs{display:none}
   font-variant-numeric:tabular-nums
 }
 .dblock.now .dn{color:var(--chord)}
+.dblock{flex-direction:column;align-items:stretch;gap:8px}
+.dhead{display:flex;align-items:center;gap:11px}
+.dstave{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.dv-staff.mini{border-radius:8px}
+.dpresets{display:flex;flex-wrap:wrap;gap:7px;padding:0 12px 12px}
+.dpreset{
+  border:1px solid var(--line);border-radius:999px;background:var(--panel-2);
+  color:var(--text);font:inherit;font-size:.76em;font-weight:700;
+  padding:9px 13px;min-height:38px
+}
+.dpreset:active{background:var(--chord);color:#101010}
 .dblock .dname{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dblock .dgroove{font-size:.72em;color:var(--muted);letter-spacing:.04em}
 .dblock .dbar{
@@ -762,6 +773,7 @@ body[data-setmode="set"] .addsongs{display:block}
         <span class="dv-editname" id="drumEditName">—</span>
         <label class="dbars">Bars<input id="drumBars" inputmode="numeric" value="4"></label>
       </div>
+      <div class="dpresets" id="drumPresets"></div>
       <div class="dv-staffwrap"><svg id="drumStaff" class="dv-staff"></svg></div>
       <div class="drumwrap"><div class="drumgrid" id="drumGrid"></div></div>
     </div>
@@ -2128,7 +2140,7 @@ function setDrums(on){
     drumTimer=setInterval(drumSchedule,DRUM_TICK);
     cancelAnimationFrame(drumRaf);drumRaf=requestAnimationFrame(drumTick);
   }else{
-    drumOn=false;btn.textContent="▶ Beat";
+    drumOn=false;btn.textContent="▶ Play chart";
     clearInterval(drumTimer);cancelAnimationFrame(drumRaf);
     drumTimer=0;drumRaf=0;drumQueue=[];markStep(-1);
   }
@@ -2140,7 +2152,8 @@ function setDrums(on){
    would need a full rhythm engine to place correctly, and neither changes
    what a drummer plays. */
 const SW=26, SX0=40, SBASE=78, GAP=8;
-const staffX=i=>SX0+i*SW+SW/2;
+let sw=SW, sx0=SX0;                       /* current stave metrics */
+const staffX=i=>sx0+i*sw+sw/2;
 const yFor=p=>SBASE-p*(GAP/2);
 function noteHead(x,y,ch,k){
   const acc=ACCENT(ch);
@@ -2160,8 +2173,13 @@ function noteHead(x,y,ch,k){
   if(acc)g+=`<text x="${x}" y="${yFor(11)}" class="nacc">&gt;</text>`;
   return g;
 }
-function paintStaff(){
-  const n=beat.div, W=SX0+n*SW+16;
+function paintStaff(){ renderStave(document.getElementById("drumStaff"),beat,SW,SX0,true); }
+/* the same drawing at any size: full in the editor, compact on a chart row */
+function renderStave(svgEl,bt,stepW,leftPad,withNow,tight){
+  if(!svgEl)return;
+  const keep=[sw,sx0]; sw=stepW; sx0=leftPad;
+  const beat=bt;                          /* shadow: the drawing reads `beat` */
+  const n=beat.div, W=leftPad+n*stepW+16;
   let g="";
   for(let l=0;l<5;l++){
     const y=yFor(l*2);
@@ -2174,7 +2192,7 @@ function paintStaff(){
   /* beat markers */
   for(let i=0;i<n;i+=perBeat())
     g+=`<line x1="${staffX(i)-SW/2}" y1="${yFor(8)-2}" x2="${staffX(i)-SW/2}" y2="${yFor(0)+2}" class="sbeat"/>`;
-  g+=`<rect id="staffNow" x="0" y="${yFor(12)}" width="22" height="${yFor(-3)-yFor(12)}" class="snow" style="display:none"/>`;
+  if(withNow)g+=`<rect id="staffNow" x="0" y="${yFor(12)}" width="${stepW-4}" height="${yFor(-3)-yFor(12)}" class="snow" style="display:none"/>`;
   /* noteheads */
   const hands=[],feet=[];
   for(let i=0;i<n;i++){
@@ -2214,10 +2232,13 @@ function paintStaff(){
     };
     beamRuns(hands,4); beamRuns(feet,-4);
   }
-  const svg=document.getElementById("drumStaff");
-  svg.setAttribute("viewBox","0 0 "+W+" 104");
-  svg.setAttribute("width",W); svg.setAttribute("height",104);
-  svg.innerHTML=g;
+  /* crop the empty air above the beams and below the foot stems, or a chart
+     row is mostly blank and only three sections fit on a phone */
+  const top=tight?22:0, hgt=tight?80:104;
+  svgEl.setAttribute("viewBox","0 "+top+" "+W+" "+hgt);
+  svgEl.setAttribute("width",W); svgEl.setAttribute("height",hgt);
+  svgEl.innerHTML=g;
+  sw=keep[0]; sx0=keep[1];
 }
 
 /* ---------- the grid ---------- */
@@ -2293,6 +2314,45 @@ function nudgeBpm(d){
   paintDrumBits();
   if(drumOn){setDrums(false);setDrums(true);}   /* re-anchor on the new tempo */
 }
+/* ---------- grooves you can actually start from ----------
+   A chart of nine sections all reading "no groove yet" is a to-do list, not
+   something you can play from. These are the feels a worship set actually
+   uses, so a song is readable the moment it is opened. */
+const GROOVES=[
+  {n:"Straight 8ths", b:"4/4 16 HH=x-x-x-x-x-x-x-x- SN=----O-------O--- BD=o-------o-------"},
+  {n:"Rock 16ths",    b:"4/4 16 HH=xxxxxxxxxxxxxxxx SN=----O-------O--- BD=o--o----o-------"},
+  {n:"Ride groove",   b:"4/4 16 RD=x-x-x-x-x-x-x-x- SN=----O-------O--- BD=o-------o-------"},
+  {n:"Half-time",     b:"4/4 16 HH=x-x-x-x-x-x-x-x- SN=--------O------- BD=o-----o---------"},
+  {n:"Ballad",        b:"4/4 16 HH=x---x---x---x--- SN=----o-------o--- BD=o-------o-------"},
+  {n:"Build (toms)",  b:"4/4 16 T1=o---o---o---o--- FT=--o---o---o---o- BD=o---o---o---o---"},
+  {n:"No drums",      b:""},
+];
+/* which feel suits which section, so one tap fills a whole song sensibly */
+function suggestGroove(label){
+  const l=(label||"").toLowerCase();
+  if(/intro|interlude|instrument/.test(l))return "Ride groove";
+  if(/pre/.test(l))                       return "Straight 8ths";
+  if(/chorus|refrain|tag/.test(l))        return "Rock 16ths";
+  if(/bridge|mid/.test(l))                return "Half-time";
+  if(/outro|ending/.test(l))              return "Ballad";
+  return "Straight 8ths";
+}
+function fillChart(){
+  if(document.body.dataset.readonly==="1"){toast("Only an admin can do this");return;}
+  const song=parseSong(SONGS[state.i]);
+  let n=0;
+  song.sections.forEach(sec=>{
+    if(!sec.label||sec.beat)return;             /* never overwrite real work */
+    const g=GROOVES.find(x=>x.n===suggestGroove(sec.label));
+    if(g&&g.b){sec.beat=g.b; if(!sec.bars)sec.bars="4"; n++;}
+  });
+  if(!n){toast("Every section already has a groove");return;}
+  SONGS[state.i]=serialize(song);
+  saveLocal();
+  loadBeat();paintChart();paintDrumBits();
+  toast("Filled "+n+" section"+(n>1?"s":"")+" — now change what you don't like");
+}
+
 /* ---------- the chart view ---------- */
 let editIx=-1;                       /* which chart block the grid is editing */
 function grooveName(b){
@@ -2308,15 +2368,34 @@ function paintChart(){
       'Add a playing order in the song editor and each section can carry its own groove.</p>';
     return;
   }
+  /* an empty chart is unreadable, so offer to fill it in one tap */
+  if(document.body.dataset.readonly!=="1"&&chart.every(b=>!KIT.some(v=>/[^-]/.test(b.beat.rows[v.k])))){
+    const go=document.createElement("button");
+    go.className="btn go wide";go.id="drumFill";
+    go.textContent="Start me a chart";
+    go.onclick=fillChart;
+    wrap.appendChild(go);
+  }
   chart.forEach((b,i)=>{
     const row=document.createElement("button");
     row.className="dblock"+(b.step===state.step?" now":"");
     row.dataset.i=i;
-    row.innerHTML='<span class="dn">'+(i+1)+'</span>'+
-      '<span class="dname">'+esc(b.label)+
-        '<br><span class="dgroove">'+esc(grooveName(b))+'</span></span>'+
-      '<span class="dbar">'+b.bars+' bars</span>';
+    row.innerHTML='<span class="dhead"><span class="dn">'+(i+1)+'</span>'+
+      '<span class="dname">'+esc(b.label)+'</span>'+
+      '<span class="dbar">'+b.bars+' bars</span></span>'+
+      '<span class="dstave"></span>';
     wrap.appendChild(row);
+    /* the notation belongs ON the chart. A chart you have to tap into to read
+       is not a chart. */
+    const box=row.querySelector(".dstave");
+    if(b.beat&&KIT.some(v=>/[^-]/.test(b.beat.rows[v.k]))){
+      const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("class","dv-staff mini");
+      box.appendChild(svg);
+      renderStave(svg,b.beat,13,22,false,true);
+    }else{
+      box.innerHTML='<span class="dgroove">no groove yet — tap to set one</span>';
+    }
   });
   lastBlock=-1;
 }
@@ -2324,10 +2403,29 @@ document.getElementById("drumChart").addEventListener("click",e=>{
   const row=e.target.closest(".dblock"); if(!row)return;
   openGroove(+row.dataset.i);
 });
+function paintPresets(){
+  const box=document.getElementById("drumPresets");
+  if(!box)return;
+  box.innerHTML="";
+  if(document.body.dataset.readonly==="1")return;
+  GROOVES.forEach(g=>{
+    const btn=document.createElement("button");
+    btn.className="dpreset";btn.textContent=g.n;
+    btn.onclick=()=>{
+      const nb=g.b?parseBeat(g.b):blankBeat(beat.div);
+      beat.div=nb.div;beat.sig=nb.sig;beat.rows=nb.rows;
+      if(editIx>=0)blockAt(editIx).beat=beat;
+      paintDrums();
+      toast(g.n);
+    };
+    box.appendChild(btn);
+  });
+}
 function openGroove(i){
   editIx=i;
   const b=blockAt(i);
   beat=b.beat;
+  paintPresets();
   document.getElementById("drumEditName").textContent=b.label;
   document.getElementById("drumBars").value=b.bars;
   document.getElementById("dvChart").hidden=true;
@@ -3702,7 +3800,7 @@ function showParsed(r){
 /* rebuild this whole page with the current song list baked in */
 function buildFile(){
   const doc=document.documentElement.cloneNode(true);
-  ["song","list","roadmap","drumGrid"].forEach(id=>{const el=doc.querySelector("#"+id);if(el)el.innerHTML="";});
+  ["song","list","roadmap","drumGrid","drumChart","drumPresets"].forEach(id=>{const el=doc.querySelector("#"+id);if(el)el.innerHTML="";});
   const t=doc.querySelector("#edText");if(t)t.textContent="";
   doc.querySelectorAll(".fields input").forEach(i=>i.removeAttribute("value"));
   const e=doc.querySelector("#editor");if(e)e.setAttribute("data-open","0");
