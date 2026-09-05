@@ -527,6 +527,17 @@ body[data-readonly="1"] .addsongs{display:none}
   padding:9px 13px;min-height:38px
 }
 .dpreset:active{background:var(--chord);color:#101010}
+.dmix{display:flex;gap:7px;flex-wrap:wrap}
+.dmix button{
+  flex:1;min-width:74px;min-height:40px;border-radius:999px;font:inherit;
+  font-size:.76em;font-weight:700;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--muted)
+}
+.dmix button[data-on="1"]{border-color:var(--chord);color:var(--chord)}
+.dchords{
+  font-size:.74em;color:var(--section);font-weight:700;letter-spacing:.03em;
+  margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
 .dblock .dname{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dblock .dgroove{font-size:.72em;color:var(--muted);letter-spacing:.04em}
 .dblock .dbar{
@@ -785,6 +796,7 @@ body[data-setmode="set"] .addsongs{display:block}
       <button class="btn" id="drumFaster" aria-label="Faster">+</button>
       <button class="btn" id="drumDiv">16ths</button>
     </div>
+    <div class="dmix" id="drumMix"></div>
     <button class="btn go wide" id="drumSave" hidden>Save for everyone</button>
     <p class="pace-hint" id="drumNote"></p>
   </div>
@@ -915,7 +927,7 @@ function parseSong(src){
         cur={label:v,lines:[]};song.sections.push(cur);
       }else if(k==="cue"){
         if(cur)cur.lines.push({type:"cue",text:v});
-      }else if((k==="beat"||k==="bars")&&cur){
+      }else if((k==="beat"||k==="bars"||k==="prog")&&cur){
         cur[k]=v;              /* a verse and a chorus are not the same groove */
       }else song.meta[k]=v;
       return;
@@ -1128,6 +1140,7 @@ function serialize(song){
     if(sec.label)out.push("{section: "+sec.label+"}");
     if(sec.beat)out.push("{beat: "+sec.beat+"}");
     if(sec.bars)out.push("{bars: "+sec.bars+"}");
+    if(sec.prog)out.push("{prog: "+sec.prog+"}");
     sec.lines.forEach(ln=>{
       if(ln.type==="gap")out.push("");
       else if(ln.type==="cue")out.push("{cue: "+ln.text+"}");
@@ -1995,8 +2008,10 @@ function buildChart(){
     /* the section's real name, not the map token: "Chorus" reads off a chart,
        "C" does not, and this is read at arm's length while playing */
     const name=(sec&&sec.label)||st.label;
+    const bars=barsFor(sec);
+    const prog=parseProg(sec&&sec.prog,bars)||seedProg(sec,bars);
     for(let r=0;r<reps;r++)
-      chart.push({step:i,pass:r,label:name,sec,beat:beatFor(sec),bars:barsFor(sec)});
+      chart.push({step:i,pass:r,label:name,sec,beat:beatFor(sec),bars,prog});
   });
 }
 function blockAt(i){ return chart[i]||chart[0]; }
@@ -2063,6 +2078,124 @@ function hit(k,ch,t){
   else               metal(a,t,5000,0.9,acc?0.5:0.35);   /* crash */
 }
 
+/* ============================================================
+   THE BAND — a drumless backing to practise against.
+
+   The book already knows the chords; what it does not know is WHEN they
+   change, because [G]chords are tied to syllables, not to bars. So a
+   progression is stored per section, one chord per bar, on the same
+   section-and-bars model the drum chart uses. Sharing that model is the point:
+   the band and the drums cannot drift apart, because there is only one
+   timeline.
+
+   Everything is synthesised. Sampled instruments would be megabytes, would
+   break the single-file rule and would not work offline. An organ really is
+   additive — a few sine partials per note, which is what a drawbar does — so
+   that one is honest. Bass is a filtered triangle. Both are a frame to play
+   against, not a record.
+   ============================================================ */
+const MIX={drums:1,bass:1,organ:1};
+
+/* chord symbol -> root, bass and intervals */
+function chordNotes(sym){
+  const m=(sym||"").match(RE); if(!m)return null;
+  const[,root,acc,restRaw]=m;
+  let rest=restRaw,bass=null;
+  const sl=rest.indexOf("/");
+  if(sl>=0){
+    const b=rest.slice(sl+1).match(RE);
+    rest=rest.slice(0,sl);
+    if(b)bass=idx(b[1],b[2]);
+  }
+  const r=idx(root,acc), t=rest.replace(/\s+/g,"");
+  let iv=[0,4,7];
+  if(/^(m|min|-)(?!aj)/.test(t))iv=[0,3,7];
+  if(/^(dim|o)/.test(t))        iv=[0,3,6];
+  if(/^(aug|\+)/.test(t))       iv=[0,4,8];
+  if(/^sus2/.test(t))           iv=[0,2,7];
+  else if(/^sus/.test(t))       iv=[0,5,7];
+  if(/(maj7|M7)/.test(t))       iv=iv.concat(11);
+  else if(/7/.test(t))          iv=iv.concat(10);
+  if(/6/.test(t)&&!/7/.test(t)) iv=iv.concat(9);
+  return {root:r,bass:bass===null?r:bass,iv};
+}
+const freqOf=(semi,oct)=>440*Math.pow(2,(semi+12*(oct-4))/12);
+
+function bassNote(a,t,semi,dur){
+  if(!MIX.bass)return;
+  const o=a.createOscillator();o.type="triangle";
+  o.frequency.setValueAtTime(freqOf(semi,2),t);
+  const f=a.createBiquadFilter();f.type="lowpass";f.frequency.value=420;
+  const g=a.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.55,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(0.12,dur*0.9));
+  o.connect(f).connect(g).connect(a.destination);
+  o.start(t);o.stop(t+dur+0.05);
+}
+/* drawbars: the fundamental, its octave, the fifth above that, two octaves */
+const DRAWBARS=[[0,0.5],[12,0.3],[19,0.16],[24,0.11]];
+function organChord(a,t,notes,dur){
+  if(!MIX.organ)return;
+  notes.forEach(semi=>DRAWBARS.forEach(([off,lvl])=>{
+    const o=a.createOscillator();o.type="sine";
+    o.frequency.setValueAtTime(freqOf(semi+off,4),t);
+    const g=a.createGain(),peak=lvl*0.14;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(peak,t+0.03);        /* a key, not a pluck */
+    g.gain.setValueAtTime(peak,t+Math.max(0.06,dur-0.06));
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g).connect(a.destination);
+    o.start(t);o.stop(t+dur+0.05);
+  }));
+}
+/* one bar of the band */
+function playBar(a,t,sym,dur){
+  const c=chordNotes(transposeChord(sym,state.steps,currentSong().meta.key||"C"));
+  if(!c)return;
+  bassNote(a,t,c.bass,dur);
+  organChord(a,t,c.iv.map(x=>(c.root+x)%12),dur);
+}
+
+/* ---------- the progression ---------- */
+function chordsIn(sec){
+  const out=[];
+  (sec?sec.lines:[]).forEach(ln=>{
+    if(ln.type==="cue"||ln.type==="gap"||!ln.text)return;
+    if(ln.type==="row")(ln.text.match(/[A-G][#b]?[^\s|]*/g)||[]).forEach(c=>out.push(c));
+    else toPairs(ln.text).forEach(pr=>{if(pr.c)out.push(pr.c);});
+  });
+  return out;
+}
+function parseProg(str,bars){
+  const cells=(str||"").split("|").map(x=>x.trim()).filter(Boolean);
+  if(!cells.length)return null;
+  const out=[];
+  for(let i=0;i<bars;i++)out.push(cells[i%cells.length].split(/\s+/).filter(Boolean));
+  return out;
+}
+/* What matters is where the harmony CHANGES, not how many syllables carry the
+   same chord. Sampling the raw list by position gave "G# | G# | G# | G#" for a
+   whole verse, because the first quarter of its chords were all the one chord. */
+function changesIn(sec){
+  const out=[];
+  chordsIn(sec).forEach(c=>{ if(out[out.length-1]!==c)out.push(c); });
+  return out;
+}
+function seedProg(sec,bars){
+  const cs=changesIn(sec);
+  if(!cs.length)return null;
+  const out=[];
+  for(let i=0;i<bars;i++)out.push([cs[Math.floor(i*cs.length/bars)]]);
+  return out;
+}
+/* and a section with six chord changes is probably six bars, not four */
+function seedBars(sec){
+  const n=changesIn(sec).length;
+  return n?Math.max(2,Math.min(16,n)):4;
+}
+function progToStr(p){ return p?p.map(b=>b.join(" ")).join(" | "):""; }
+
 /* ---------- the scheduler ---------- */
 const DRUM_AHEAD=0.12, DRUM_TICK=25;
 let drumTimer=0,drumRaf=0,nextTime=0,drumQueue=[],lastStep=-1,lastBlock=-1;
@@ -2086,7 +2219,12 @@ function drumSchedule(){
   const a=audio(); if(!a||!chart.length)return;
   while(nextTime < a.currentTime+DRUM_AHEAD){
     const b=blockAt(cur.i);
-    KIT.forEach(v=>hit(v.k,b.beat.rows[v.k][cur.step],nextTime));
+    if(MIX.drums)KIT.forEach(v=>hit(v.k,b.beat.rows[v.k][cur.step],nextTime));
+    /* the band changes on the bar line, so schedule it once per bar */
+    if(cur.step===0&&b.prog&&b.prog[cur.bar]){
+      const bar=b.prog[cur.bar], dur=curSecs()*b.beat.div;
+      bar.forEach((sym,k)=>playBar(a,nextTime+k*(dur/bar.length),sym,dur/bar.length));
+    }
     drumQueue.push({i:cur.i,bar:cur.bar,step:cur.step,t:nextTime});
     nextTime+=curSecs();
     advance();
@@ -2344,7 +2482,13 @@ function fillChart(){
   song.sections.forEach(sec=>{
     if(!sec.label||sec.beat)return;             /* never overwrite real work */
     const g=GROOVES.find(x=>x.n===suggestGroove(sec.label));
-    if(g&&g.b){sec.beat=g.b; if(!sec.bars)sec.bars="4"; n++;}
+    if(g&&g.b){
+      sec.beat=g.b;
+      if(!sec.bars)sec.bars=String(seedBars(sec));
+      if(!sec.prog){const pr=seedProg(sec,parseInt(sec.bars,10));
+                    if(pr)sec.prog=progToStr(pr);}
+      n++;
+    }
   });
   if(!n){toast("Every section already has a groove");return;}
   SONGS[state.i]=serialize(song);
@@ -2383,6 +2527,7 @@ function paintChart(){
     row.innerHTML='<span class="dhead"><span class="dn">'+(i+1)+'</span>'+
       '<span class="dname">'+esc(b.label)+'</span>'+
       '<span class="dbar">'+b.bars+' bars</span></span>'+
+      (b.prog?'<span class="dchords">'+esc(b.prog.map(x=>x.join(" ")).join("  |  "))+'</span>':'')+
       '<span class="dstave"></span>';
     wrap.appendChild(row);
     /* the notation belongs ON the chart. A chart you have to tap into to read
@@ -2403,6 +2548,20 @@ document.getElementById("drumChart").addEventListener("click",e=>{
   const row=e.target.closest(".dblock"); if(!row)return;
   openGroove(+row.dataset.i);
 });
+const MIXROWS=[["drums","Drums"],["bass","Bass"],["organ","Organ"]];
+function paintMix(){
+  const box=document.getElementById("drumMix");
+  if(!box)return;
+  box.innerHTML="";
+  MIXROWS.forEach(([k,label])=>{
+    const b=document.createElement("button");
+    b.textContent=label;
+    b.dataset.on=MIX[k]?"1":"0";
+    b.onclick=()=>{ MIX[k]=MIX[k]?0:1; b.dataset.on=MIX[k]?"1":"0";
+      toast(label+(MIX[k]?" on":" off")); };
+    box.appendChild(b);
+  });
+}
 function paintPresets(){
   const box=document.getElementById("drumPresets");
   if(!box)return;
@@ -2448,6 +2607,7 @@ document.getElementById("drumBars").oninput=()=>{
 };
 function openDrums(){
   loadBeat();
+  paintMix();
   document.getElementById("drums").hidden=false;
   document.body.dataset.drums="1";
   backToChart();

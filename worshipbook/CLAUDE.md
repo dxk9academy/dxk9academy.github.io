@@ -424,6 +424,42 @@ screenshot rather than a passing test:
 It matched `{beat:}` anywhere, so opening a song in the editor hoisted a chorus
 groove onto the whole song and deleted it from the section.
 
+### The band — a drumless backing
+
+The book knew the chord ORDER but not the chord TIMING: `[G]chords` are tied to
+syllables, not bars. A backing track needs "which chord, in which bar", so
+`{prog:}` sits on the section beside `{beat:}` and `{bars:}` — one cell per bar,
+`|` between bars, a space for two chords in one bar:
+
+```
+{section: Chorus}
+{beat: 4/4 16 HH=xxxxxxxxxxxxxxxx SN=----O-------O--- BD=o--o----o-------}
+{bars: 4}
+{prog: G | D | Em | C}
+```
+
+Sharing the section-and-bars model with the drum chart is the whole point: the
+band and the drums cannot drift, because there is only one timeline.
+
+- `chordNotes` reads a symbol into root, bass and intervals — slash chords,
+  m/dim/aug/sus/6/7/maj7. Verified: `D/F#` gives bass F#, `Cmaj7` gives C E G B,
+  `Bsus4` gives B E F#.
+- **Seed from chord CHANGES, not from every chord.** `seedProg` first collapses
+  runs of the same chord. Sampling the raw list by position gave
+  `G# | G# | G# | G#` for a whole verse, because the first quarter of its chords
+  were all the one chord.
+- `seedBars` guesses the bar count from the number of changes, which beats
+  defaulting every section to 4.
+- The band is scheduled **once per bar**, on the bar line, inside the same
+  lookahead scheduler as the drums.
+- `MIX` toggles drums, bass and organ independently — turn the drums off and
+  play them yourself, which is what this is for.
+
+Instruments are synthesised. Sampled ones would be megabytes, would break the
+single-file rule and would not work offline. The organ is genuinely additive —
+four sine partials per note, which is what a drawbar is — and the bass is a
+lowpassed triangle. It is a frame to play against, not a record.
+
 ### The kit follows the standard legend
 
 `KIT` is the drum-set legend: each voice carries `p`, its diatonic position
