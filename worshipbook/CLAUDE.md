@@ -309,6 +309,15 @@ into a last chorus and nobody tells the app. Tapping fixes it in the moment.
   **59% slower** than the pace tapped into it. With it, tapping 1.60s gives a
   mean line of exactly 1.60s on every song while the spread still varies.
   `computeFudgeNorm()` runs in `render`, after the lines are on the page.
+- **The button says "Pace", not just the number.** It first showed only "3.4s",
+  which reads as a status display next to "Jump", a verb — the leader it was
+  built for never found it. A control nobody sees is a control that does not
+  exist.
+- **The panel is not a full-screen sheet.** You tap along *while reading the
+  words*, so it sits on top of the play bar and leaves the song visible; a sheet
+  covering the lyrics makes the one thing you are timing impossible to watch.
+  On screens under 680px tall it drops its hint text and shrinks the pad, because
+  there the words matter more than the instructions.
 - **Tapping is a performance control; everyone gets it.** It never leaves the
   device, and it resets when the song changes. Restricting it to admins would
   leave every other musician's scroll broken, which is the whole problem.

@@ -458,15 +458,38 @@ body[data-readonly="1"] .addsongs{display:none}
   padding:14px 13px;min-height:52px
 }
 .jrow:active{background:var(--chord);color:#101010}
+/* Deliberately NOT a full-screen sheet. You tap along WHILE reading the words,
+   so the panel sits above the play bar and leaves the song visible. */
+.pacepanel[hidden]{display:none}
+.pacepanel{
+  position:fixed;left:0;right:0;z-index:60;
+  bottom:calc(63px + env(safe-area-inset-bottom));   /* clears the play bar */
+  background:var(--panel);border-top:1px solid var(--chord);
+  padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px
+}
+.pace-top{display:flex;align-items:center;gap:10px}
+.pace-top h3{
+  margin:0;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)
+}
+.pace-top .btn{margin-left:auto}
+.pace-read{font-size:.95em;color:var(--chord);font-weight:700}
 .tappad{
-  width:100%;min-height:104px;border-radius:14px;border:1px solid var(--chord);
+  width:100%;min-height:74px;border-radius:12px;border:1px solid var(--chord);
   background:var(--panel-2);color:var(--chord);font:inherit;font-weight:700;
-  font-size:1.5em;letter-spacing:.22em;touch-action:manipulation
+  font-size:1.15em;letter-spacing:.18em;touch-action:manipulation
 }
 .tappad:active{background:var(--chord);color:#101010}
-.pace-read{margin:12px 0 10px;text-align:center;font-size:1.05em}
-.pace-row{display:flex;gap:9px;margin-bottom:9px}
-.pace-row .btn{flex:1;min-height:46px}
+.pace-row{display:flex;gap:8px}
+.pace-row .btn{flex:1;min-height:44px}
+#paceSave{min-height:44px}          /* a thumb, in a dark room, mid-song */
+.pace-hint{margin:0;color:var(--muted);font-size:.74em;line-height:1.45}
+/* On a short phone the words matter more than the instructions do. */
+@media (max-height:680px){
+  .pacepanel{gap:6px;padding:8px 10px 10px}
+  .tappad{min-height:54px;font-size:1em}
+  .pace-row .btn{min-height:40px}
+  .pace-hint{display:none}
+}
 .jrow .jn{font-weight:800;font-size:1em;flex:1;min-width:0}
 .jrow .jt{
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.68em;font-weight:700;
@@ -479,6 +502,10 @@ body[data-readonly="1"] .addsongs{display:none}
 .pb:active{opacity:.75}
 /* a pace that was measured, rather than guessed, says so */
 .pb.on{border-color:var(--chord);color:var(--chord)}
+.pb.col{display:flex;flex-direction:column;justify-content:center;gap:0;line-height:1.15}
+.pb-t{font-size:.8em}
+.pb-v{font-size:.72em;color:var(--muted);font-weight:600}
+.pb.on .pb-v{color:var(--chord)}
 body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
 /* the line being sung — must read from arm's length in a dim room */
 .line.active{
@@ -600,7 +627,9 @@ body[data-setmode="set"] .addsongs{display:block}
   <button class="pb go wide" id="pbPlay" aria-label="Start auto-scroll">▶ Play</button>
   <button class="pb narrow" id="pbNext" aria-label="Next section">›</button>
   <button class="pb" id="pbJump" aria-label="Jump to a section">Jump</button>
-  <button class="pb narrow" id="pbSpeed" aria-label="Line pace">1.0×</button>
+  <button class="pb narrow col" id="pbSpeed" aria-label="Pace — tap along with the song">
+    <span class="pb-t">Pace</span><span class="pb-v" id="pbSpeedVal">3.4s</span>
+  </button>
 </div>
 
 <div class="jump" id="jump" hidden>
@@ -614,26 +643,20 @@ body[data-setmode="set"] .addsongs{display:block}
   </div>
 </div>
 
-<div class="jump" id="pace" hidden>
-  <div class="jump-card">
-    <div class="jump-top">
-      <h3>Pace</h3>
-      <button class="btn" id="paceClose">Close</button>
-    </div>
-    <p class="jump-hint">Tap once for each line as it is sung — three taps is enough.
-       The scroll then follows tonight's pace instead of a fixed guess.</p>
-    <button class="tappad" id="paceTap">TAP</button>
-    <p class="pace-read" id="paceRead">—</p>
-    <div class="pace-row">
-      <button class="btn" id="paceSlower">Slower</button>
-      <button class="btn" id="paceFaster">Faster</button>
-    </div>
-    <div class="pace-row">
-      <button class="btn" id="paceReset">Reset</button>
-      <button class="btn go" id="paceSave" hidden>Save for everyone</button>
-    </div>
-    <p class="jump-hint" id="paceNote"></p>
+<div class="pacepanel" id="pace" hidden>
+  <div class="pace-top">
+    <h3>Pace</h3>
+    <span class="pace-read" id="paceRead">—</span>
+    <button class="btn" id="paceClose">Close</button>
   </div>
+  <button class="tappad" id="paceTap">TAP IN TIME</button>
+  <div class="pace-row">
+    <button class="btn" id="paceSlower">Slower</button>
+    <button class="btn" id="paceFaster">Faster</button>
+    <button class="btn" id="paceReset">Reset</button>
+  </div>
+  <button class="btn go wide" id="paceSave" hidden>Save for everyone</button>
+  <p class="pace-hint" id="paceNote">Tap once per line as it is sung — three is enough.</p>
 </div>
 
 <div class="consent" id="consent" hidden>
@@ -1570,9 +1593,8 @@ document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
 document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
 function showDwell(){
   const eff=livePace||songPace();
-  const b=document.getElementById("pbSpeed");
-  b.textContent=(eff>0?eff:dwell).toFixed(1)+"s";
-  b.classList.toggle("on",eff>0);      /* measured, not guessed */
+  document.getElementById("pbSpeedVal").textContent=(eff>0?eff:dwell).toFixed(1)+"s";
+  document.getElementById("pbSpeed").classList.toggle("on",eff>0);  /* measured, not guessed */
 }
 /* ============================================================
    GO TO — the live jump.
@@ -1693,13 +1715,10 @@ function paintPace(){
   const note=document.getElementById("paceNote");
   note.textContent = (livePace>0&&!admin)
     ? "This stays on your phone. Only an admin can save it for everyone."
-    : "";
+    : "Tap once per line as it is sung \u2014 three is enough.";
 }
 document.getElementById("paceTap").onclick=tapPace;
 document.getElementById("paceClose").onclick=closePace;
-document.getElementById("pace").addEventListener("click",e=>{
-  if(e.target.id==="pace")closePace();
-});
 document.getElementById("paceReset").onclick=()=>{
   taps=[];livePace=0;showDwell();paintPace();
   if(playing)paintActive();
