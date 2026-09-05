@@ -504,6 +504,32 @@ body[data-readonly="1"] .addsongs{display:none}
   display:flex;flex-direction:column;gap:8px
 }
 .dv-staffwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 12px}
+.dchart{display:grid;gap:8px;padding:0 12px}
+.dblock{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  border:1px solid var(--line);border-radius:11px;background:var(--panel);
+  padding:12px 13px;min-height:56px;color:var(--text)
+}
+.dblock.now{border-color:var(--chord);background:var(--panel-2)}
+.dblock .dn{
+  min-width:22px;font-size:.78em;font-weight:700;color:var(--muted);
+  font-variant-numeric:tabular-nums
+}
+.dblock.now .dn{color:var(--chord)}
+.dblock .dname{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dblock .dgroove{font-size:.72em;color:var(--muted);letter-spacing:.04em}
+.dblock .dbar{
+  font-size:.72em;color:var(--muted);white-space:nowrap;
+  font-variant-numeric:tabular-nums
+}
+.dblock.now .dbar{color:var(--chord);font-weight:700}
+.dv-editbar{display:flex;align-items:center;gap:10px;padding:0 12px 10px}
+.dv-editname{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dbars{font-size:.72em;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dbars input{
+  width:52px;min-height:38px;text-align:center;font:inherit;font-weight:700;
+  border:1px solid var(--line);border-radius:9px;background:var(--panel-2);color:var(--text)
+}
 .dv-staff{background:#F7F4EC;border-radius:10px;display:block}
 .dv-staff .sl{stroke:#20252E;stroke-width:1}
 .dv-staff .clef{fill:#20252E}
@@ -729,12 +755,20 @@ body[data-setmode="set"] .addsongs{display:block}
     <span class="pace-read" id="drumRead">—</span>
   </div>
   <div class="dv-scroll">
-    <div class="dv-staffwrap"><svg id="drumStaff" class="dv-staff"></svg></div>
-    <div class="drumwrap"><div class="drumgrid" id="drumGrid"></div></div>
+    <div id="dvChart"><div class="dchart" id="drumChart"></div></div>
+    <div id="dvEdit" hidden>
+      <div class="dv-editbar">
+        <button class="btn" id="drumBack">&#8249; Chart</button>
+        <span class="dv-editname" id="drumEditName">—</span>
+        <label class="dbars">Bars<input id="drumBars" inputmode="numeric" value="4"></label>
+      </div>
+      <div class="dv-staffwrap"><svg id="drumStaff" class="dv-staff"></svg></div>
+      <div class="drumwrap"><div class="drumgrid" id="drumGrid"></div></div>
+    </div>
   </div>
   <div class="dv-foot">
     <div class="pace-row">
-      <button class="btn go" id="drumPlay">&#9654; Beat</button>
+      <button class="btn go" id="drumPlay">&#9654; Play chart</button>
       <button class="btn" id="drumSlower" aria-label="Slower">&#8211;</button>
       <button class="btn" id="drumFaster" aria-label="Faster">+</button>
       <button class="btn" id="drumDiv">16ths</button>
@@ -869,6 +903,8 @@ function parseSong(src){
         cur={label:v,lines:[]};song.sections.push(cur);
       }else if(k==="cue"){
         if(cur)cur.lines.push({type:"cue",text:v});
+      }else if((k==="beat"||k==="bars")&&cur){
+        cur[k]=v;              /* a verse and a chorus are not the same groove */
       }else song.meta[k]=v;
       return;
     }
@@ -1078,6 +1114,8 @@ function serialize(song){
   Object.keys(song.meta).forEach(k=>{if(!ORDER.includes(k))out.push("{"+k+": "+song.meta[k]+"}");});
   song.sections.forEach(sec=>{
     if(sec.label)out.push("{section: "+sec.label+"}");
+    if(sec.beat)out.push("{beat: "+sec.beat+"}");
+    if(sec.bars)out.push("{bars: "+sec.bars+"}");
     sec.lines.forEach(ln=>{
       if(ln.type==="gap")out.push("");
       else if(ln.type==="cue")out.push("{cue: "+ln.text+"}");
@@ -1903,9 +1941,53 @@ function loadBeat(){
   const m=currentSong().meta;
   beat=parseBeat(m.beat)||blankBeat(16);
   beatBpm=Math.min(220,Math.max(40,parseFloat(m.tempo||"")||90));
+  buildChart();
 }
 function stepSecs(){ return (60/beatBpm)*beat.sig[0]*(4/beat.sig[1])/beat.div; }
 function perBeat(){ return beat.div/beat.sig[0]; }
+
+/* ============================================================
+   THE CHART — the arrangement, not one bar.
+
+   A drummer does not read a loop, they read a road map: section, how many
+   bars, what groove, where the fills are. {map:} already holds that road map
+   and already drives the lyrics, the roadmap chips and Go to — so the drum
+   chart rides on the same steps rather than inventing a second arrangement.
+
+   A groove therefore belongs to a SECTION. A verse and a chorus are not the
+   same feel, and writing one pattern per song was the thing that made this
+   unusable for playing along.
+   ============================================================ */
+let chart=[], chartAt=0;
+function secFor(short){
+  return currentSong().sections.find(x=>x.label&&shortOf(x.label)===short)||null;
+}
+function beatFor(sec){
+  return parseBeat(sec&&sec.beat) || parseBeat(currentSong().meta.beat) || blankBeat(16);
+}
+function barsFor(sec){
+  const n=parseInt((sec&&sec.bars)||"",10);
+  return Math.max(1,Math.min(64,n||4));
+}
+function buildChart(){
+  const steps=mapSteps(currentSong());
+  chart=[];
+  if(!steps.length){                    /* no arrangement written: one block */
+    chart.push({step:-1,pass:0,label:currentSong().meta.title||"Groove",
+                sec:null,beat:beat,bars:4});
+    return;
+  }
+  steps.forEach((st,i)=>{
+    const sec=secFor(st.short);
+    const reps=Math.max(1,parseInt(st.rep||"1",10)||1);
+    /* the section's real name, not the map token: "Chorus" reads off a chart,
+       "C" does not, and this is read at arm's length while playing */
+    const name=(sec&&sec.label)||st.label;
+    for(let r=0;r<reps;r++)
+      chart.push({step:i,pass:r,label:name,sec,beat:beatFor(sec),bars:barsFor(sec)});
+  });
+}
+function blockAt(i){ return chart[i]||chart[0]; }
 
 /* ---------- the kit ---------- */
 let ac=null,noiseBuf=null;
@@ -1971,33 +2053,64 @@ function hit(k,ch,t){
 
 /* ---------- the scheduler ---------- */
 const DRUM_AHEAD=0.12, DRUM_TICK=25;
-let drumTimer=0,drumRaf=0,nextStep=0,nextTime=0,drumQueue=[],lastStep=-1;
+let drumTimer=0,drumRaf=0,nextTime=0,drumQueue=[],lastStep=-1,lastBlock=-1;
+/* where the scheduler has got to: which block of the chart, which bar of it,
+   which subdivision of that bar */
+let cur={i:0,bar:0,step:0};
+function curBeat(){ return blockAt(cur.i).beat; }
+function curSecs(){
+  const b=curBeat();
+  return (60/beatBpm)*b.sig[0]*(4/b.sig[1])/b.div;
+}
+function advance(){
+  const b=blockAt(cur.i);
+  cur.step++;
+  if(cur.step>=b.beat.div){
+    cur.step=0; cur.bar++;
+    if(cur.bar>=b.bars){ cur.bar=0; cur.i=(cur.i+1)%chart.length; }
+  }
+}
 function drumSchedule(){
-  const a=audio(); if(!a)return;
+  const a=audio(); if(!a||!chart.length)return;
   while(nextTime < a.currentTime+DRUM_AHEAD){
-    KIT.forEach(v=>hit(v.k,beat.rows[v.k][nextStep],nextTime));
-    drumQueue.push({step:nextStep,t:nextTime});
-    nextTime+=stepSecs();
-    nextStep=(nextStep+1)%beat.div;
+    const b=blockAt(cur.i);
+    KIT.forEach(v=>hit(v.k,b.beat.rows[v.k][cur.step],nextTime));
+    drumQueue.push({i:cur.i,bar:cur.bar,step:cur.step,t:nextTime});
+    nextTime+=curSecs();
+    advance();
   }
 }
 function markStep(i){
   if(i===lastStep)return;
-  document.querySelectorAll("#drumGrid .dcell.now,#drumStaff .nowbar")
-    .forEach(c=>c.classList.remove("now","nowbar"));
+  document.querySelectorAll("#drumGrid .dcell.now").forEach(c=>c.classList.remove("now"));
+  const bar=document.getElementById("staffNow");
   if(i>=0){
     document.querySelectorAll('#drumGrid .dcell[data-i="'+i+'"]').forEach(c=>c.classList.add("now"));
-    const bar=document.getElementById("staffNow");
     if(bar){bar.setAttribute("x",staffX(i)-11);bar.style.display="";}
-  }else{
-    const bar=document.getElementById("staffNow"); if(bar)bar.style.display="none";
-  }
+  }else if(bar)bar.style.display="none";
   lastStep=i;
+}
+/* the chart row you are on, and which bar of it — what a drummer glances at */
+function markBlock(i,barNo){
+  const rows=[...document.querySelectorAll(".dblock")];
+  rows.forEach(r=>r.classList.toggle("now",+r.dataset.i===i));
+  const row=rows[i];
+  if(row){
+    const c=row.querySelector(".dbar");
+    if(c)c.textContent="bar "+(barNo+1)+" / "+blockAt(i).bars;
+    if(i!==lastBlock){
+      rows.forEach(r=>{const x=r.querySelector(".dbar");
+        if(x&&+r.dataset.i!==i)x.textContent=blockAt(+r.dataset.i).bars+" bars";});
+      row.scrollIntoView({block:"nearest",behavior:"smooth"});
+    }
+  }
+  lastBlock=i;
 }
 function drumTick(){
   if(ac){
     while(drumQueue.length>1&&drumQueue[1].t<=ac.currentTime)drumQueue.shift();
-    if(drumQueue.length&&drumQueue[0].t<=ac.currentTime)markStep(drumQueue[0].step);
+    const q=drumQueue[0];
+    if(q&&q.t<=ac.currentTime){ markStep(q.step); markBlock(q.i,q.bar); }
   }
   drumRaf=requestAnimationFrame(drumTick);
 }
@@ -2007,7 +2120,10 @@ function setDrums(on){
     const a=audio();
     if(!a){toast("This browser has no audio");return;}
     drumOn=true;btn.textContent="■ Stop";
-    nextStep=0;nextTime=a.currentTime+0.08;drumQueue=[];lastStep=-1;
+    /* start at the block the band is actually on, not always the top */
+    const from=chart.findIndex(b=>b.step===state.step);
+    cur={i:from<0?0:from,bar:0,step:0};
+    nextTime=a.currentTime+0.08;drumQueue=[];lastStep=-1;lastBlock=-1;
     drumSchedule();
     drumTimer=setInterval(drumSchedule,DRUM_TICK);
     cancelAnimationFrame(drumRaf);drumRaf=requestAnimationFrame(drumTick);
@@ -2141,10 +2257,12 @@ function paintDrumBits(){
   const t=document.getElementById("drumTitle");
   if(t)t.textContent=currentSong().meta.title||"";
   const admin=document.body.dataset.readonly!=="1";
-  document.getElementById("drumSave").hidden=!admin;
-  document.getElementById("drumNote").textContent = admin
-    ? "Tap a cell to cycle it through that voice's articulations."
-    : "Only an admin can change the pattern.";
+  const editing=editIx>=0;
+  document.getElementById("drumSave").hidden=!(admin&&editing);
+  document.getElementById("drumNote").textContent = editing
+    ? (admin?"Tap a cell to cycle it through that voice's articulations."
+            :"Only an admin can change the pattern.")
+    : "The song's playing order, in order. Tap a section to set its groove.";
 }
 document.getElementById("drumGrid").addEventListener("click",e=>{
   const c=e.target.closest(".dcell"); if(!c)return;
@@ -2175,11 +2293,66 @@ function nudgeBpm(d){
   paintDrumBits();
   if(drumOn){setDrums(false);setDrums(true);}   /* re-anchor on the new tempo */
 }
+/* ---------- the chart view ---------- */
+let editIx=-1;                       /* which chart block the grid is editing */
+function grooveName(b){
+  if(!b.beat)return "no groove yet";
+  const on=KIT.filter(v=>/[^-]/.test(b.beat.rows[v.k])).map(v=>v.label);
+  return on.length?on.join(" · "):"no groove yet";
+}
+function paintChart(){
+  const wrap=document.getElementById("drumChart");
+  wrap.innerHTML="";
+  if(!chart.length){
+    wrap.innerHTML='<p class="pace-hint">This song has no arrangement yet. '+
+      'Add a playing order in the song editor and each section can carry its own groove.</p>';
+    return;
+  }
+  chart.forEach((b,i)=>{
+    const row=document.createElement("button");
+    row.className="dblock"+(b.step===state.step?" now":"");
+    row.dataset.i=i;
+    row.innerHTML='<span class="dn">'+(i+1)+'</span>'+
+      '<span class="dname">'+esc(b.label)+
+        '<br><span class="dgroove">'+esc(grooveName(b))+'</span></span>'+
+      '<span class="dbar">'+b.bars+' bars</span>';
+    wrap.appendChild(row);
+  });
+  lastBlock=-1;
+}
+document.getElementById("drumChart").addEventListener("click",e=>{
+  const row=e.target.closest(".dblock"); if(!row)return;
+  openGroove(+row.dataset.i);
+});
+function openGroove(i){
+  editIx=i;
+  const b=blockAt(i);
+  beat=b.beat;
+  document.getElementById("drumEditName").textContent=b.label;
+  document.getElementById("drumBars").value=b.bars;
+  document.getElementById("dvChart").hidden=true;
+  document.getElementById("dvEdit").hidden=false;
+  paintDrums();
+}
+function backToChart(){
+  editIx=-1;
+  document.getElementById("dvEdit").hidden=true;
+  document.getElementById("dvChart").hidden=false;
+  buildChart();paintChart();paintDrumBits();
+}
+document.getElementById("drumBack").onclick=backToChart;
+document.getElementById("drumBars").oninput=()=>{
+  if(document.body.dataset.readonly==="1"||editIx<0)return;
+  const b=blockAt(editIx);
+  const n=Math.max(1,Math.min(64,parseInt(document.getElementById("drumBars").value,10)||4));
+  b.bars=n;
+  if(b.sec)b.sec.bars=String(n);
+};
 function openDrums(){
   loadBeat();
   document.getElementById("drums").hidden=false;
   document.body.dataset.drums="1";
-  paintDrums();
+  backToChart();
 }
 function closeDrums(){
   setDrums(false);
@@ -2197,12 +2370,21 @@ document.getElementById("drumDiv").onclick=()=>setDiv(DIVS[(DIVS.indexOf(beat.di
 document.getElementById("drumSave").onclick=()=>{
   if(document.body.dataset.readonly==="1"){toast("Only an admin can save this");return;}
   const song=parseSong(SONGS[state.i]);
-  const str=beatToStr(beat);
-  if(str)song.meta.beat=str; else delete song.meta.beat;
   song.meta.tempo=String(Math.round(beatBpm));
+  if(editIx>=0){
+    /* a groove belongs to its section, so every pass of that section gets it */
+    const b=blockAt(editIx);
+    const str=beatToStr(beat);
+    const target=b.sec?song.sections.find(x=>x.label===b.sec.label):null;
+    if(target){
+      if(str)target.beat=str; else delete target.beat;
+      target.bars=String(b.bars);
+    }else if(str)song.meta.beat=str;
+  }
   SONGS[state.i]=serialize(song);
   saveLocal();
-  toast("Beat saved for everyone");
+  buildChart();
+  toast(editIx>=0&&blockAt(editIx).sec?"Saved for "+blockAt(editIx).label:"Beat saved");
 };
 
 document.getElementById("pbSpeed").onclick=()=>{
@@ -3332,8 +3514,13 @@ document.getElementById("edClose").onclick=()=>{ed.dataset.open="0";};
 const F=id=>document.getElementById(id);
 function loadInto(t){
   const meta={};const body=[];
+  /* Only the directives ABOVE the first section belong to the song. A {beat:}
+     inside a section is that section's groove, and hoisting it up here moved a
+     chorus groove onto the whole song and deleted it from the section. */
+  let inBody=false;
   t.split("\n").forEach(l=>{
-    const d=l.match(/^\{(title|author|role|key|capo|tempo|pace|beat|folder|map):\s*(.*)\}\s*$/);
+    if(/^\{section:/.test(l))inBody=true;
+    const d=inBody?null:l.match(/^\{(title|author|role|key|capo|tempo|pace|beat|folder|map):\s*(.*)\}\s*$/);
     if(d)meta[d[1]]=d[2].trim();else body.push(l);
   });
   F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";F("fAuthor").value=meta.author||"";

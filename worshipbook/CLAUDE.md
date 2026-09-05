@@ -372,6 +372,41 @@ uses so a pattern can be copied across by eye:
 Time signature, subdivisions per bar, then one row per voice. `parseBeat` also
 accepts the short keys that tool emits (`H`, `S`, `K`, `T`, `C`, `T4`).
 
+### The chart, not a loop
+
+A drummer does not read one bar, they read a **road map**: section, how many
+bars, what groove, where the fills go. That is how session and worship drum
+charts are actually written — the groove is notated once and the rest is bar
+counts, because nobody notates eighty bars of hi-hat.
+
+So a groove belongs to a **section**, and the chart is `{map:}` expanded:
+
+```
+{section: Chorus}
+{beat: 4/4 16 HH=xxxxxxxxxxxxxxxx SN=----O-------O--- BD=o--o--o---o-----}
+{bars: 8}
+```
+
+`buildChart` walks `mapSteps` — the same arrangement that drives the lyrics,
+the roadmap chips and Go to — so `Intro - V1 - PC - C - Refrain - Int - V2 - PC
+- C - Refrain - Br - C - Refrain` becomes thirteen readable blocks. Setting the
+Chorus groove once shows up on **every** chorus pass, because they are the same
+section, not three copies.
+
+Blocks carry the section's real name, not the map token: "Chorus" reads off a
+chart at arm's length, "C" does not.
+
+Playback walks that chart rather than looping one bar — `cur` is {block, bar,
+subdivision} and `advance()` rolls each into the next, so each section plays its
+own groove for its own bar count and hands over. Verified at 120bpm 4/4 where a
+bar is 2.0s: a two-bar Intro crashes at 0 and 2.0, a one-bar Verse takes over at
+4.0 with its own kick and snare, and the Intro resumes at 6.0. Play starts on
+the block the band is already on, not always at the top.
+
+**`loadInto` must stop reading song directives at the first `{section:}`.**
+It matched `{beat:}` anywhere, so opening a song in the editor hoisted a chorus
+groove onto the whole song and deleted it from the section.
+
 ### The kit follows the standard legend
 
 `KIT` is the drum-set legend: each voice carries `p`, its diatonic position
