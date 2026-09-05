@@ -362,45 +362,75 @@ under a fixed y. Do not go back to that: it never lands on the sung line.
 
 ## Drums
 
-`{beat:}` carries the groove with the song, in the same shape the drummer's own
-online tool uses so a pattern can be copied across by eye:
+`{beat:}` carries the groove with the song, in the shape the drummer's own tool
+uses so a pattern can be copied across by eye:
 
 ```
-{beat: 4/4 16 H=xxxxxxxxxxxxxxxx S=OO--O-------O--- K=ooo-----o-------}
+{beat: 4/4 16 HH=xxxxxxxxxxxxxxxx SN=OO--O-------O--- BD=ooo-----o-------}
 ```
 
-Time signature, subdivisions per bar, then one row per voice — `H`at, `S`nare,
-`K`ick, `T`om, `C`rash. `-` is a rest, `o`/`x` a hit, `O`/`X` an accent. The
-`Drums` button in the control row opens a grid over the play bar; a cell cycles
-off → hit → accent.
+Time signature, subdivisions per bar, then one row per voice. `parseBeat` also
+accepts the short keys that tool emits (`H`, `S`, `K`, `T`, `C`, `T4`).
 
-**Sounds are synthesised, never sampled.** A kit of wav files would be megabytes,
-would break the single-file rule and would not survive offline. Four oscillators
-and one noise buffer cost nothing: kick is a sine swept 150→48Hz, snare is
-filtered noise plus a 190Hz triangle, hats and crash are highpassed noise, tom
-is a slower sine sweep.
+### The kit follows the standard legend
 
-**Timing does not run on `requestAnimationFrame`, and must not.** rAF is fine for
-a lyric highlight arriving 30ms late; a hi-hat 30ms late is audibly wrong, and
-rAF stalls whenever the browser is busy. Notes are scheduled up to 120ms ahead
-against `AudioContext.currentTime`, which is sample-accurate, on a 25ms
+`KIT` is the drum-set legend: each voice carries `p`, its diatonic position
+above the bottom staff line, and `cyc`, the articulations that voice actually
+has. Crash and hi-hat sit above the staff, ride on the top line, toms and snare
+down the staff, and the feet — bass drum and hi-hat pedal — at the bottom with
+their stems pointing **down**, which is what makes a drum chart readable at a
+glance.
+
+Characters: `-` rest, `o`/`x` hit, `O`/`X` accent, and per voice `o` open and
+`h` half-open hi-hat, `c` cross stick, `g` ghost note, `b` bell of the ride.
+
+**`o` and `h` mean open only on a hi-hat.** They were briefly drawn as open on
+every voice, which put an open-cymbal circle over the bass drum and both toms.
+
+### The stave
+
+`paintStaff` draws real notation as inline SVG — neutral clef, five lines,
+noteheads by voice, stems up for hands and down for feet, and beams across runs
+of neighbouring notes inside one beat. Two honest shortcuts: **rests are not
+drawn**, and a note with no neighbour in its beat gets a plain stem rather than
+a flag. Both need a full rhythm engine to place correctly and neither changes
+what a drummer plays.
+
+Drums is its own full screen, like Home, because nine voices and a stave do not
+fit in a strip above the play bar. `body[data-drums="1"]` hides the play bar —
+and that rule **must sit after** `body[data-readonly="1"] .playbar{display:flex}`,
+which otherwise re-shows the bar at equal specificity on source order. Same trap
+as `.updatebar[hidden]`.
+
+The row labels are `position:sticky` so they hold while the bar scrolls
+sideways. A row of cells with no name against it is unreadable.
+
+### Sound and timing
+
+**Sounds are SYNTHESISED, never sampled.** A kit of wav files would be
+megabytes, would break the single-file rule and would not survive offline. Two
+helpers do all of it: `membrane` (a pitch-swept sine) for kick and toms,
+`metal` (highpassed noise) for cymbals, and both together for the snare.
+
+**Timing does not run on `requestAnimationFrame`, and must not.** rAF is fine
+for a lyric highlight arriving 30ms late; a hi-hat 30ms late is audibly wrong,
+and rAF stalls whenever the browser is busy. Notes are scheduled up to 120ms
+ahead against `AudioContext.currentTime`, which is sample-accurate, on a 25ms
 `setInterval`. rAF only moves the playhead to catch up with what was already
 scheduled. Verified: at 80bpm on sixteenths every scheduled gap is exactly
 0.1875s.
 
-- **Playing is for everyone; editing the pattern is admin only**, gated on the
-  same `body[data-readonly]` as every other edit. A drummer who is not signed in
+- **Playing is for everyone; editing is admin only**, on the same
+  `body[data-readonly]` gate as every other edit. A drummer who is not signed in
   can still hear the groove.
 - `openSong` calls `closeDrums`, so changing song never leaves a beat playing.
 - `{beat:}` is carried through the editor by a hidden `#fBeat` input, and
-  `buildFile` clears `#drumGrid` so the generated cells are not baked into the
-  published file.
+  `buildFile` clears `#drumGrid`.
 - Changing the subdivision keeps the hits that still land on a real subdivision
-  and drops the rest, rather than silently moving them somewhere they were not.
+  and drops the rest, rather than silently moving them.
 
 The iPhone ringer switch mutes Web Audio. That is the platform's behaviour, not
-something this file can fix — if the beat is silent on a phone, check the switch
-first.
+something this file can fix — if the beat is silent on a phone, check it first.
 
 ## Keeping work (localStorage)
 
