@@ -218,6 +218,13 @@ permanent edit to the song.
 
 ## Services (set lists)
 
+The published `SETS` ships with the current service in it, so anyone opening the
+link sees it without signing in. `SUGGESTED_SETS` and `offerAdditions` cover the
+other half of the problem: `pullBook` replaces `SONGS` and `SETS` wholesale with
+the Worker's copy, so songs added to the file are invisible on a synced device
+until an admin is asked to merge them in. The prompt is admin-only, fires once
+per `BASE_STAMP`, and only ever **adds** — it never removes or overwrites.
+
 `SETS` is a one-line array of `{name, songs:[title]}` — a named, ordered list of
 songs for one service, e.g. `Sunday 7 Sept`. The library holds exactly one copy
 of each song's words; a song may sit in any number of services. References are
@@ -343,6 +350,17 @@ actually publish a change that others see.
   number after it is the capo fret (confirmed: `Holy Forever`, G + 3 = Bb, and
   `OPEN` appears in the same slot). The plus signs themselves mean something
   else — ask the person who writes the charts.
+- **The capo header is inverted, and it is wrong on all 9 capo songs.** The song
+  data means `{key:}` = the shapes printed on the paper chart, and the sounding
+  key = key **+** capo. Both `{cue:}` lines say so outright: `Holy Forever`
+  G + 3 = Bb, `Offering Song` G + 4 = B. But `render()` computes
+  `n = state.steps - state.capo`, so it shows shapes a capo's worth *below* what
+  is written and calls the written key the sounding one. `Offering Song` prints
+  `| D# | A# | Cm |` where the band's chart says play `| G | D | Em |` with capo 4.
+  The fix is shapes = `key + steps`, sounding = `key + steps + capo`, plus the
+  matching sign change to the `back` conversion (the `-(state.steps-state.capo)`
+  near the chord picker). Not done here: it changes the chord grid on seven
+  songs the team already uses, so it is the leader's call, not a silent edit.
 - No offline caching yet. A service worker would make it work when the church
   wifi drops. This is the highest-value next addition.
 - No print stylesheet.
