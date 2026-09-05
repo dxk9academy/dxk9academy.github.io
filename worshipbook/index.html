@@ -1415,7 +1415,6 @@ function openSong(i){
    ============================================================ */
 let playing=false,rafId=0,nextAt=0;
 let dwell=3.4;                                   /* seconds for a normal line */
-const DWELLS=[2.0,2.6,3.0,3.4,4.0,4.8,6.0];
 let livePace=0;          /* tapped just now: this device, this song, never saved */
 let taps=[];
 function songPace(){
@@ -1724,15 +1723,24 @@ document.getElementById("paceReset").onclick=()=>{
   if(playing)paintActive();
   toast("Back to the song's own pace");
 };
-function stepDwell(d){
-  const i=DWELLS.indexOf(dwell);
-  dwell=DWELLS[Math.max(0,Math.min(DWELLS.length-1,(i<0?3:i)+d))];
-  livePace=0;taps=[];                /* a hand-set speed replaces a measured one */
+/* Nudge whatever is actually in force, and always in both directions.
+   The first version walked a fixed ladder from `dwell` and ignored a tapped
+   pace completely, so after tapping 1.7s pressing Faster jumped to 3.0s —
+   slower — and the ladder stopped at 2.0s, so a quick song could not be nudged
+   faster at all. It only ever appeared to move one way. */
+const PACE_MIN=0.5, PACE_MAX=12, PACE_STEP=1.08;
+function nudgePace(dir){                      /* +1 slower, -1 faster */
+  const measured=livePace||songPace();
+  const cur=measured||dwell;
+  const next=Math.min(PACE_MAX,Math.max(PACE_MIN,dir>0?cur*PACE_STEP:cur/PACE_STEP));
+  if(measured)livePace=next;                  /* tuning this song */
+  else dwell=next;                            /* tuning the fallback for every song */
+  taps=[];                                    /* the taps no longer describe this */
   showDwell();paintPace();
   if(playing)paintActive();
 }
-document.getElementById("paceSlower").onclick=()=>stepDwell(1);
-document.getElementById("paceFaster").onclick=()=>stepDwell(-1);
+document.getElementById("paceSlower").onclick=()=>nudgePace(1);
+document.getElementById("paceFaster").onclick=()=>nudgePace(-1);
 document.getElementById("paceSave").onclick=()=>{
   if(document.body.dataset.readonly==="1"){toast("Only an admin can save this");return;}
   if(!(livePace>0))return;

@@ -318,6 +318,14 @@ into a last chorus and nobody tells the app. Tapping fixes it in the moment.
   covering the lyrics makes the one thing you are timing impossible to watch.
   On screens under 680px tall it drops its hint text and shrinks the pad, because
   there the words matter more than the instructions.
+- **Slower / Faster nudge whatever is in force, both ways.** They first walked a
+  fixed ladder of seven values anchored on `dwell`, ignoring any tapped or saved
+  pace — so after tapping 1.7s, pressing *Faster* jumped to 3.0s, which is
+  slower, and the ladder stopped at 2.0s so a quick song could not be nudged
+  faster at all. It only ever appeared to move one way. Now each press scales
+  the pace actually in force by 1.08, clamped to 0.5–12s: a measured pace tunes
+  that song, and with nothing measured it tunes the global `dwell` fallback.
+  A saved `{pace:}` is not touched until **Save for everyone** is pressed.
 - **Tapping is a performance control; everyone gets it.** It never leaves the
   device, and it resets when the song changes. Restricting it to admins would
   leave every other musician's scroll broken, which is the whole problem.
