@@ -458,6 +458,15 @@ body[data-readonly="1"] .addsongs{display:none}
   padding:14px 13px;min-height:52px
 }
 .jrow:active{background:var(--chord);color:#101010}
+.tappad{
+  width:100%;min-height:104px;border-radius:14px;border:1px solid var(--chord);
+  background:var(--panel-2);color:var(--chord);font:inherit;font-weight:700;
+  font-size:1.5em;letter-spacing:.22em;touch-action:manipulation
+}
+.tappad:active{background:var(--chord);color:#101010}
+.pace-read{margin:12px 0 10px;text-align:center;font-size:1.05em}
+.pace-row{display:flex;gap:9px;margin-bottom:9px}
+.pace-row .btn{flex:1;min-height:46px}
 .jrow .jn{font-weight:800;font-size:1em;flex:1;min-width:0}
 .jrow .jt{
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.68em;font-weight:700;
@@ -468,6 +477,8 @@ body[data-readonly="1"] .addsongs{display:none}
 .jrow[data-here="1"] .jt{color:var(--section);border-color:var(--section)}
 .pb.go{background:var(--chord);color:#101010;border-color:var(--chord)}
 .pb:active{opacity:.75}
+/* a pace that was measured, rather than guessed, says so */
+.pb.on{border-color:var(--chord);color:var(--chord)}
 body[data-edit="1"] .playbar,body[data-readonly="1"] .playbar{display:flex}
 /* the line being sung — must read from arm's length in a dim room */
 .line.active{
@@ -563,6 +574,7 @@ body[data-setmode="set"] .addsongs{display:block}
     <label>Tempo<input id="fTempo" placeholder="72" inputmode="numeric"></label>
     <label>Add to service<select id="fSet"></select></label>
     <label class="wide">Playing order<input id="fMap" placeholder="Tap the buttons below"></label>
+    <input type="hidden" id="fPace">
   </div>
   <div class="mapbuild">
     <p class="lbl">Tap a section to add it</p>
@@ -599,6 +611,28 @@ body[data-setmode="set"] .addsongs{display:block}
     </div>
     <p class="jump-hint">Sings from there now. The written arrangement is not changed.</p>
     <div class="jump-list" id="jumpList"></div>
+  </div>
+</div>
+
+<div class="jump" id="pace" hidden>
+  <div class="jump-card">
+    <div class="jump-top">
+      <h3>Pace</h3>
+      <button class="btn" id="paceClose">Close</button>
+    </div>
+    <p class="jump-hint">Tap once for each line as it is sung — three taps is enough.
+       The scroll then follows tonight's pace instead of a fixed guess.</p>
+    <button class="tappad" id="paceTap">TAP</button>
+    <p class="pace-read" id="paceRead">—</p>
+    <div class="pace-row">
+      <button class="btn" id="paceSlower">Slower</button>
+      <button class="btn" id="paceFaster">Faster</button>
+    </div>
+    <div class="pace-row">
+      <button class="btn" id="paceReset">Reset</button>
+      <button class="btn go" id="paceSave" hidden>Save for everyone</button>
+    </div>
+    <p class="jump-hint" id="paceNote"></p>
   </div>
 </div>
 
@@ -912,11 +946,13 @@ function render(){
   PLAY=buildPlay();paintedPos=-1;
   paintSteps();
   paintAttrib();
+  computeFudgeNorm();     /* so a tapped pace is the real average, not a bias */
+  showDwell();            /* a song may carry its own measured pace */
   buildList();
 }
 
 /* ---------- turn the parsed song back into text ---------- */
-const ORDER=["title","author","role","key","capo","tempo","folder","map"];
+const ORDER=["title","author","role","key","capo","tempo","pace","folder","map"];
 function serialize(song){
   const out=[];
   ORDER.forEach(k=>{if(song.meta[k]!==undefined)out.push("{"+k+": "+song.meta[k]+"}");});
@@ -1331,7 +1367,8 @@ function openSong(i){
   hideHome();
   rememberOpened(i);
   state.i=i;state.steps=0;state.step=0;state.pos=-1;
-  closeJump();
+  livePace=0;taps=[];        /* another song is another pace */
+  closeJump();closePace();
   state.capo=parseInt(parseSong(SONGS[i]).meta.capo||"0",10)||0;
   setPlaying(false);closeDrawer();render();
 }
@@ -1346,6 +1383,11 @@ function openSong(i){
 let playing=false,rafId=0,nextAt=0;
 let dwell=3.4;                                   /* seconds for a normal line */
 const DWELLS=[2.0,2.6,3.0,3.4,4.0,4.8,6.0];
+let livePace=0;          /* tapped just now: this device, this song, never saved */
+let taps=[];
+function songPace(){
+  try{ return parseFloat(currentSong().meta.pace||"")||0; }catch(e){ return 0; }
+}
 
 function songLines(){return [...document.querySelectorAll("#song .line")];}
 
@@ -1383,10 +1425,32 @@ function posOfLine(el,from){
 /* a long line is sung for longer than a two-word one */
 function lineDwell(el){
   const bpm=parseFloat(currentSong().meta.tempo||"")||0;
-  const base=bpm>0?(60/bpm)*4:dwell;             /* one 4/4 bar when we know the tempo */
+  /* A measured pace beats a derived one. livePace is what was tapped just now,
+     songPace() what was tapped and saved before; only then fall back to BPM
+     (which assumes one 4/4 bar a line) and finally to the fixed guess. */
+  const base=livePace>0?livePace
+            :songPace()>0?songPace()
+            :bpm>0?(60/bpm)*4
+            :dwell;
   if(el&&el.classList.contains("chords-row"))return base;
   const n=el?el.textContent.trim().length:28;
-  return base*Math.max(0.55,Math.min(1.8,n/28));
+  /* Divide by the song's own average so the spread redistributes time between
+     long and short lines WITHOUT moving the mean. Without this a tapped
+     "1.6s a line" actually ran at 1.76, because the length factor sits above 1
+     more often than below it — the measurement would be re-multiplied by the
+     very guess it was brought in to replace. */
+  return base*lengthFactor(n)/(fudgeNorm||1);
+}
+function lengthFactor(n){return Math.max(0.55,Math.min(1.8,n/28));}
+/* recomputed per song, in render, once the lines are on the page */
+let fudgeNorm=1;
+function computeFudgeNorm(){
+  let total=0,count=0;
+  songLines().forEach(el=>{
+    if(el.classList.contains("chords-row"))return;
+    total+=lengthFactor(el.textContent.trim().length);count++;
+  });
+  fudgeNorm=count?total/count:1;
 }
 /* Split the sung line into words once, so the highlight can fill across it the
    way a karaoke line does. Only the active line is split, and only outside edit
@@ -1494,7 +1558,12 @@ function tick(t){
 document.getElementById("pbPlay").onclick=()=>setPlaying(!playing);
 document.getElementById("pbNext").onclick=()=>goStep(state.step+1);
 document.getElementById("pbPrev").onclick=()=>goStep(state.step-1);
-function showDwell(){document.getElementById("pbSpeed").textContent=dwell.toFixed(1)+"s";}
+function showDwell(){
+  const eff=livePace||songPace();
+  const b=document.getElementById("pbSpeed");
+  b.textContent=(eff>0?eff:dwell).toFixed(1)+"s";
+  b.classList.toggle("on",eff>0);      /* measured, not guessed */
+}
 /* ============================================================
    GO TO — the live jump.
 
@@ -1559,9 +1628,95 @@ document.getElementById("jump").addEventListener("click",e=>{
   if(e.target.id==="jump")closeJump();      /* tap the dimmed area to dismiss */
 });
 
+/* ============================================================
+   PACE — measured by tapping, because the band plays to no click.
+
+   BPM was the obvious answer and is not enough on its own: BPM says how fast a
+   beat is, not how many beats a line lasts, so it still needs a bars-per-line
+   guess to become a scroll speed. Tapping skips the derivation and measures the
+   only quantity Play actually consumes — seconds per line.
+
+   It is also closed loop. A free-running timer is right for thirty seconds and
+   wrong for the rest of the song, because a live band slows into a last chorus
+   and nobody tells the app. Tapping corrects it in the moment, by whoever is
+   holding the phone.
+
+   Tapping is a performance control and everyone gets it; it never leaves the
+   device. Saving a pace into the song is an edit to the shared book, so that is
+   admin only, exactly like every other edit.
+   ============================================================ */
+function openPace(){ taps=[]; paintPace(); document.getElementById("pace").hidden=false; }
+function closePace(){ const el=document.getElementById("pace"); if(el)el.hidden=true; }
+
+/* The median gap, not the mean: one late tap should not drag the whole reading. */
+function tappedPace(){
+  if(taps.length<3)return 0;
+  const g=[];
+  for(let i=1;i<taps.length;i++)g.push((taps[i]-taps[i-1])/1000);
+  g.sort((a,b)=>a-b);
+  const m=g.length%2 ? g[g.length>>1] : (g[(g.length>>1)-1]+g[g.length>>1])/2;
+  return (m>=0.4&&m<=15)?m:0;        /* a double tap and a coffee break are both noise */
+}
+function tapPace(){
+  const now=performance.now();
+  /* a gap this long is someone starting again, not a very slow line */
+  if(taps.length&&now-taps[taps.length-1]>6000)taps=[];
+  taps.push(now);
+  if(taps.length>8)taps.shift();     /* follow the last few lines, not the whole song */
+  const p=tappedPace();
+  if(p>0){ livePace=p; showDwell(); if(playing)paintActive(); }
+  paintPace();
+}
+function paintPace(){
+  const read=document.getElementById("paceRead");
+  const p=tappedPace(), eff=livePace||songPace();
+  if(taps.length&&taps.length<3){
+    const left=3-taps.length;
+    read.textContent=left+" more tap"+(left>1?"s":"")+"…";
+  }else if(p>0)      read.textContent=p.toFixed(2)+"s per line";
+  else if(eff>0)     read.textContent=eff.toFixed(2)+"s per line"+(songPace()&&!livePace?" (saved)":"");
+  else               read.textContent=dwell.toFixed(1)+"s per line (fixed)";
+
+  const admin=document.body.dataset.readonly!=="1";
+  const sv=document.getElementById("paceSave");
+  sv.hidden=!(admin&&livePace>0);
+  const note=document.getElementById("paceNote");
+  note.textContent = (livePace>0&&!admin)
+    ? "This stays on your phone. Only an admin can save it for everyone."
+    : "";
+}
+document.getElementById("paceTap").onclick=tapPace;
+document.getElementById("paceClose").onclick=closePace;
+document.getElementById("pace").addEventListener("click",e=>{
+  if(e.target.id==="pace")closePace();
+});
+document.getElementById("paceReset").onclick=()=>{
+  taps=[];livePace=0;showDwell();paintPace();
+  if(playing)paintActive();
+  toast("Back to the song's own pace");
+};
+function stepDwell(d){
+  const i=DWELLS.indexOf(dwell);
+  dwell=DWELLS[Math.max(0,Math.min(DWELLS.length-1,(i<0?3:i)+d))];
+  livePace=0;taps=[];                /* a hand-set speed replaces a measured one */
+  showDwell();paintPace();
+  if(playing)paintActive();
+}
+document.getElementById("paceSlower").onclick=()=>stepDwell(1);
+document.getElementById("paceFaster").onclick=()=>stepDwell(-1);
+document.getElementById("paceSave").onclick=()=>{
+  if(document.body.dataset.readonly==="1"){toast("Only an admin can save this");return;}
+  if(!(livePace>0))return;
+  const song=parseSong(SONGS[state.i]);
+  song.meta.pace=livePace.toFixed(2);
+  SONGS[state.i]=serialize(song);
+  saveLocal();                       /* and on to everyone, if signed in */
+  toast("Saved "+livePace.toFixed(2)+"s per line");
+  paintPace();
+};
+
 document.getElementById("pbSpeed").onclick=()=>{
-  dwell=DWELLS[(DWELLS.indexOf(dwell)+1)%DWELLS.length];
-  showDwell();toast(dwell.toFixed(1)+"s per line");
+  document.getElementById("pace").hidden?openPace():closePace();
 };
 
 /* tap the line you are actually on — the fastest way back in sync */
@@ -2714,12 +2869,13 @@ const F=id=>document.getElementById(id);
 function loadInto(t){
   const meta={};const body=[];
   t.split("\n").forEach(l=>{
-    const d=l.match(/^\{(title|author|role|key|capo|tempo|folder|map):\s*(.*)\}\s*$/);
+    const d=l.match(/^\{(title|author|role|key|capo|tempo|pace|folder|map):\s*(.*)\}\s*$/);
     if(d)meta[d[1]]=d[2].trim();else body.push(l);
   });
   F("fTitle").value=meta.title||"";F("fRole").value=meta.role||"";F("fAuthor").value=meta.author||"";
   F("fKey").value=meta.key||"C";F("fCapo").value=meta.capo||"0";
   F("fTempo").value=meta.tempo||"";F("fMap").value=meta.map||"";
+  F("fPace").value=meta.pace||"";        /* carried through, not typed by hand */
   const sel=F("fSet");sel.innerHTML="";
   const none=document.createElement("option");none.value="-1";none.textContent="— none —";
   sel.appendChild(none);
@@ -2734,6 +2890,7 @@ function assemble(){
   return "{title: "+g("fTitle")+"}\n"+(g("fAuthor")?"{author: "+g("fAuthor")+"}\n":"")+
     "{role: "+g("fRole")+"}\n{key: "+(g("fKey")||"C")+
     "}\n{capo: "+(g("fCapo")||"0")+"}\n"+(g("fTempo")?"{tempo: "+g("fTempo")+"}\n":"")+
+    (g("fPace")?"{pace: "+g("fPace")+"}\n":"")+
     "{map: "+g("fMap")+"}\n"+edText.value.trim();
 }
 document.getElementById("edLoad").onclick=()=>loadInto(SONGS[state.i]);

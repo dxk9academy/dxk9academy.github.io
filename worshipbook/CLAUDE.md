@@ -255,10 +255,41 @@ document order. A song with no `{map:}` falls back to it, and only then.
 played three times lands on the same element three times and must still restart
 its timing and word fill each pass.
 
-- **Dwell** is `{tempo:}` if the song has one (one 4/4 bar per line), otherwise
-  the `dwell` setting, scaled 0.55–1.8x by line length so a two-word line does
-  not sit as long as a full one. The bottom-right button cycles it and shows
-  the real figure in seconds, which means more to a musician than "1.4x".
+- **Dwell** is, in order: `livePace` (tapped just now), `{pace:}` (tapped and
+  saved), `{tempo:}` (BPM, assuming one 4/4 bar a line), then the fixed `dwell`.
+  Each is scaled 0.55–1.8x by line length so a two-word line does not sit as
+  long as a full one. The bottom-right button shows the figure in seconds, which
+  means more to a musician than "1.4x", and opens the pace sheet.
+
+### Pace — tapped, because the band plays to no click
+
+BPM was the obvious answer and is not sufficient alone: BPM says how fast a beat
+is, not how many beats a line lasts, so it still needs a bars-per-line guess
+before it becomes a scroll speed. Tapping skips the derivation and measures the
+only quantity Play consumes — **seconds per line**.
+
+It is also closed loop, which is the real point. A free-running timer is right
+for thirty seconds and wrong for the rest of the song, because a live band slows
+into a last chorus and nobody tells the app. Tapping fixes it in the moment.
+
+- `tappedPace()` takes the **median** gap of the last 8 taps, not the mean, so
+  one late tap cannot drag the reading. Gaps outside 0.4–15s are discarded, and
+  a gap over 6s clears the taps — that is someone starting again, not a slow line.
+- **`lengthFactor` is divided by `fudgeNorm`**, the song's own average factor.
+  Without that the measurement gets re-multiplied by the very guess it replaced:
+  the factor sits above 1 more often than below it, so `Impossible Possible` ran
+  **59% slower** than the pace tapped into it. With it, tapping 1.60s gives a
+  mean line of exactly 1.60s on every song while the spread still varies.
+  `computeFudgeNorm()` runs in `render`, after the lines are on the page.
+- **Tapping is a performance control; everyone gets it.** It never leaves the
+  device, and it resets when the song changes. Restricting it to admins would
+  leave every other musician's scroll broken, which is the whole problem.
+- **Saving a pace into the song is an edit** to the shared book, so it is admin
+  only, gated on `body[data-readonly]` exactly like every other edit. A member
+  who taps is told plainly that it stays on their phone.
+- `{pace:}` is carried through the editor by a hidden `#fPace` input. `assemble()`
+  rebuilds the directive block from form fields alone, so a directive with no
+  field is silently dropped on save — which is what still happens to `{folder:}`.
 - **The page settles.** `keepInBand` scrolls only when the sung line leaves the
   18%–62% band, then puts it back at 30%. A page that moves under every line is
   harder to read than one that holds still.
@@ -363,6 +394,14 @@ actually publish a change that others see.
   songs the team already uses, so it is the leader's call, not a silent edit.
 - No offline caching yet. A service worker would make it work when the church
   wifi drops. This is the highest-value next addition.
+- **Bars per line** is the next real gain for Play. The charts already state it:
+  a row like `| A | E/G# | A | B |` is literally four bars, and there are 28 such
+  rows in the library going unused. That would replace the character-count proxy
+  with actual structure. Tapping makes the mean right; this would make each
+  individual line right.
+- `assemble()` drops any directive without a form field. `{folder:}` is dropped
+  today. `{pace:}` is carried by a hidden input; the general fix is to preserve
+  unknown directives the way `serialize()` already does.
 - No print stylesheet.
 - Chord placement in some converted songs still needs a musician's pass.
 - No print stylesheet.
